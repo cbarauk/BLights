@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CB Lighting - UI Preview</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Roboto, Arial, sans-serif;
+            background-color: #121212;
+            background-image: linear-gradient(135deg, #2a2a2a 0%, #0d0d0d 100%);
+            overflow: hidden;
+            color: #fff;
+            height: 100vh;
+        }
+
+        /* --- Dev Menu for Preview --- */
+        #dev-menu {
+            position: fixed;
+            top: 15px;
+            left: 15px;
+            background: rgba(0, 0, 0, 0.85);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 10px;
+            border-radius: 4px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            z-index: 9999;
+        }
+        #dev-menu button {
+            background: #F86F1A;
+            color: #fff;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 3px;
+            cursor: pointer;
+            font-weight: 700;
+            text-transform: uppercase;
+            font-size: 11px;
+            min-width: 150px;
+        }
+        #dev-menu button:hover {
+            background: #d65f12;
+        }
+
+        #container {
+            width: 100vw;
+            height: 100vh;
+            position: absolute;
+            top: 0;
+            left: 0;
+            pointer-events: none;
+        }
+
+        /* =============================================
+           1. Placement UI (Floating Keycaps Style)
+           ============================================= */
+        #placement-ui {
+            position: absolute;
+            bottom: 8%;
+            left: 50%;
+            transform: translateX(-50%);
+            display: none; /* Hidden by default for preview */
+            flex-direction: column;
+            align-items: center;
+            gap: 18px;
+            pointer-events: all;
+        }
+        .ui-title {
+            background: transparent;
+            padding: 0;
+            margin-bottom: 5px; /* Added slight margin since the line is gone */
+            color: rgba(255, 255, 255, 0.95);
+            font-size: 13px;
+            font-weight: 800;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            text-shadow: 0 2px 8px rgba(0,0,0,0.9);
+            position: relative;
+        }
+        
+        /* Line removed */
+        
+        .ui-card {
+            background: transparent !important;
+            border: none !important;
+            box-shadow: none !important;
+            padding: 0;
+            border-radius: 0;
+            backdrop-filter: none !important;
+        }
+        #ui-controls {
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            gap: 0;
+        }
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            padding: 0 18px;
+        }
+        .control-divider {
+            width: 1px;
+            height: 40px;
+            background: linear-gradient(to bottom, transparent, rgba(255, 255, 255, 0.15), transparent);
+        }
+        .control-btn {
+            background: transparent;
+            border: none;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+        }
+        .control-btn .ctrl-key {
+            background: linear-gradient(145deg, #ffffff, #e6e6e6);
+            color: #1a1a1a;
+            min-width: 42px;
+            height: 42px;
+            padding: 0 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 800;
+            box-shadow: 
+                0 4px 6px rgba(0,0,0,0.4), 
+                0 2px 4px rgba(0,0,0,0.3),
+                inset 0 -2px 0 rgba(0,0,0,0.1),
+                inset 0 1px 0 rgba(255,255,255,0.8);
+            box-sizing: border-box;
+        }
+        .control-btn .ctrl-text {
+            color: rgba(255, 255, 255, 0.85);
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            text-shadow: 0 1px 4px rgba(0,0,0,0.8); 
+            white-space: nowrap;
+        }
+
+        /* =============================================
+           GTA V Native UI Shared Styles (Semi-circle 10% Orange Gradient)
+           ============================================= */
+        .gta-ui-card {
+            /* 50% transparency black with a 10% orange radial gradient at the bottom */
+            background: radial-gradient(circle at 50% 120%, rgba(248, 111, 26, 0.1) 0%, rgba(0, 0, 0, 0.5) 60%);
+            backdrop-filter: blur(6px);
+            border: 1px solid rgba(255,255,255,0.05);
+            border-radius: 4px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+            color: #fff;
+        }
+
+        .gta-label {
+            color: rgba(255,255,255,0.6);
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .gta-action {
+            color: #F86F1A;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            cursor: pointer;
+        }
+        .gta-title {
+            color: #ffffff;
+            font-size: 18px;
+            font-weight: 800;
+            margin: 0;
+            text-transform: uppercase;
+            letter-spacing: -0.5px;
+        }
+        .gta-btn {
+            background: #F86F1A;
+            color: #fff;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 3px;
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .gta-btn:hover { background: #d65f12; }
+        .gta-btn-ghost {
+            background: transparent;
+            color: #F86F1A;
+            border: 1px solid #F86F1A;
+            padding: 8px 16px;
+            border-radius: 3px;
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            cursor: pointer;
+        }
+        .gta-btn-ghost:hover { background: rgba(248, 111, 26, 0.1); }
+
+        /* =============================================
+           2. Control Panel UI (GTA V Style)
+           ============================================= */
+        #control-panel-ui {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            pointer-events: all;
+            display: none; /* Hidden by default for preview */
+            width: 380px;
+        }
+        .cp-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 20px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+        .cp-body {
+            padding: 20px;
+            display: flex;
+            gap: 20px;
+        }
+        .cp-wheel-container {
+            position: relative;
+            width: 140px;
+            height: 140px;
+            flex-shrink: 0;
+        }
+        #color-wheel {
+            width: 140px;
+            height: 140px;
+            border-radius: 50%;
+            cursor: crosshair;
+        }
+        #wheel-cursor {
+            position: absolute;
+            width: 12px;
+            height: 12px;
+            border: 2px solid #fff;
+            border-radius: 50%;
+            pointer-events: none;
+            transform: translate(-50%, -50%);
+            top: 50%;
+            left: 50%;
+        }
+        .cp-sliders {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            flex-grow: 1;
+            justify-content: center;
+        }
+        .cp-slider-block {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        .cp-slider-label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 11px;
+            color: rgba(255,255,255,0.6);
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+        .cp-slider-label span:last-child {
+            color: #fff;
+        }
+        .cp-slider-track {
+            position: relative;
+            width: 100%;
+            height: 8px;
+            background: #111;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .cp-slider-fill {
+            position: absolute;
+            height: 100%;
+            border-radius: 4px;
+            background: rgba(255,255,255,0.8);
+        }
+        .cp-slider-handle {
+            position: absolute;
+            width: 14px;
+            height: 14px;
+            background: #fff;
+            border-radius: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            box-shadow: 0 0 2px rgba(0,0,0,0.8);
+        }
+        .cp-footer {
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+            border-top: 1px solid rgba(255,255,255,0.1);
+        }
+        .cp-footer button {
+            flex: 1;
+            padding: 8px;
+            font-size: 11px;
+        }
+
+        /* =============================================
+           3. Shop UI (GTA V Style)
+           ============================================= */
+        #shop-ui {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: none; /* Hidden by default for preview */
+            justify-content: center;
+            align-items: center;
+            pointer-events: all;
+            background: rgba(0,0,0,0.6);
+            backdrop-filter: blur(2px);
+        }
+        .shop-card {
+            width: 450px;
+            max-height: 80vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        .shop-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 20px;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+        .shop-items-container {
+            overflow-y: auto;
+            flex-grow: 1;
+        }
+        .shop-item {
+            padding: 15px 20px;
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+        .shop-item-icon {
+            width: 60px;
+            height: 60px;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            font-size: 24px;
+            color: #F86F1A;
+        }
+        .shop-item-details {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+        }
+        .item-info h3 {
+            margin: 0 0 4px 0;
+            color: #fff;
+            font-size: 15px;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+        .item-info p {
+            margin: 0;
+            color: rgba(255,255,255,0.6);
+            font-size: 12px;
+            line-height: 1.3;
+        }
+        .shop-item-actions {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 8px;
+        }
+        .item-price {
+            color: #fff;
+            font-size: 14px;
+            font-weight: 700;
+        }
+        .coming-soon {
+            opacity: 0.5;
+            pointer-events: none;
+        }
+        .coming-soon-tag {
+            color: rgba(255,255,255,0.6);
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            border: 1px solid rgba(255,255,255,0.2);
+            padding: 4px 8px;
+            border-radius: 3px;
+        }
+        .shop-footer {
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-top: 1px solid rgba(255,255,255,0.1);
+        }
+        .shop-price {
+            color: rgba(255,255,255,0.8);
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+        .shop-price span {
+            color: #fff;
+            font-size: 16px;
+            margin-left: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div id="dev-menu">
+        <button onclick="mockShowPlacement()">Show Placement</button>
+        <button onclick="mockOpenControl()">Open Color Panel</button>
+        <button onclick="mockOpenShop()">Open Shop</button>
+        <button onclick="closeAll()">Close All</button>
+    </div>
+
+    <div id="container">
+        <!-- 1. Placement UI -->
+        <div id="placement-ui">
+            <div class="ui-title">LIGHTING CONTROLS</div>
+            <div class="ui-card">
+                <div id="ui-controls">
+                    <div class="control-group">
+                        <div class="control-btn">
+                            <div class="ctrl-key">E</div>
+                            <div class="ctrl-text">Place</div>
+                        </div>
+                    </div>
+                    <div class="control-divider"></div>
+                    <div class="control-group">
+                        <div class="control-btn">
+                            <div class="ctrl-key">BACK</div>
+                            <div class="ctrl-text">Cancel</div>
+                        </div>
+                    </div>
+                    <div class="control-divider"></div>
+                    <div class="control-group">
+                        <div class="control-btn">
+                            <div class="ctrl-key">↑</div>
+                            <div class="ctrl-text">Height Up</div>
+                        </div>
+                    </div>
+                    <div class="control-divider"></div>
+                    <div class="control-group">
+                        <div class="control-btn">
+                            <div class="ctrl-key">↓</div>
+                            <div class="ctrl-text">Height Down</div>
+                        </div>
+                    </div>
+                    <div class="control-divider"></div>
+                    <div class="control-group">
+                        <div class="control-btn">
+                            <div class="ctrl-key">←</div>
+                            <div class="ctrl-text">Rotate</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 2. Control Panel UI -->
+        <div id="control-panel-ui" class="gta-ui-card">
+            <div class="cp-header">
+                <div class="gta-title">LIGHTING CONTROL</div>
+                <span class="gta-action" onclick="mockCloseControl()">Close</span>
+            </div>
+            <div class="cp-body">
+                <div class="cp-wheel-container">
+                    <canvas id="color-wheel" width="140" height="140"></canvas>
+                    <div id="wheel-cursor"></div>
+                </div>
+                <div class="cp-sliders">
+                    <div class="cp-slider-block">
+                        <div class="cp-slider-label">
+                            <span>Brightness</span>
+                            <span>8.0</span>
+                        </div>
+                        <div class="cp-slider-track">
+                            <div class="cp-slider-fill" style="width: 80%;"></div>
+                            <div class="cp-slider-handle" style="left: 80%;"></div>
+                        </div>
+                    </div>
+                    <div class="cp-slider-block">
+                        <div class="cp-slider-label">
+                            <span>Distance</span>
+                            <span>25.0</span>
+                        </div>
+                        <div class="cp-slider-track">
+                            <div class="cp-slider-fill" style="width: 50%;"></div>
+                            <div class="cp-slider-handle" style="left: 50%;"></div>
+                        </div>
+                    </div>
+                    <div class="cp-slider-block">
+                        <div class="cp-slider-label">
+                            <span>Width</span>
+                            <span>25.0</span>
+                        </div>
+                        <div class="cp-slider-track">
+                            <div class="cp-slider-fill" style="width: 50%;"></div>
+                            <div class="cp-slider-handle" style="left: 50%;"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="cp-footer">
+                <button class="gta-btn-ghost">Sync All</button>
+                <button class="gta-btn-ghost">Cancel</button>
+                <button class="gta-btn">Save</button>
+            </div>
+        </div>
+
+        <!-- 3. Shop UI -->
+        <div id="shop-ui">
+            <div class="shop-card gta-ui-card">
+                <div class="shop-header">
+                    <div class="gta-title">STUDIO EQUIPMENT</div>
+                    <span class="gta-action" onclick="mockCloseShop()">Close</span>
+                </div>
+                <div class="shop-items-container">
+                    <div class="shop-item">
+                        <div class="shop-item-icon">
+                            <i class="fa-solid fa-lightbulb"></i>
+                        </div>
+                        <div class="shop-item-details">
+                            <div class="item-info">
+                                <h3>Studio Light</h3>
+                                <p>High-end RGB studio light with precise placement.</p>
+                            </div>
+                        </div>
+                        <div class="shop-item-actions">
+                            <div class="item-price">$500</div>
+                            <button class="gta-btn-ghost">Add to Cart</button>
+                        </div>
+                    </div>
+
+                    <div class="shop-item coming-soon">
+                        <div class="shop-item-icon">
+                            <i class="fa-solid fa-question"></i>
+                        </div>
+                        <div class="shop-item-details">
+                            <div class="item-info">
+                                <h3>Omni Tube Light</h3>
+                                <p>360-degree omni-directional tube light.</p>
+                            </div>
+                        </div>
+                        <div class="shop-item-actions">
+                            <div class="item-price">$750</div>
+                            <div class="coming-soon-tag">Coming Soon</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="shop-footer">
+                    <div class="shop-price">Total: <span>$0</span></div>
+                    <button class="gta-btn">Checkout</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Mock Dev Functions
+        function closeAll() {
+            document.getElementById('placement-ui').style.display = 'none';
+            document.getElementById('control-panel-ui').style.display = 'none';
+            document.getElementById('shop-ui').style.display = 'none';
+        }
+        function mockShowPlacement() { closeAll(); document.getElementById('placement-ui').style.display = 'flex'; }
+        function mockOpenControl() { closeAll(); document.getElementById('control-panel-ui').style.display = 'block'; drawColorWheel(); }
+        function mockCloseControl() { document.getElementById('control-panel-ui').style.display = 'none'; }
+        function mockOpenShop() { closeAll(); document.getElementById('shop-ui').style.display = 'flex'; }
+        function mockCloseShop() { document.getElementById('shop-ui').style.display = 'none'; }
+
+        // Canvas Logic
+        const wheelCanvas = document.getElementById('color-wheel');
+        const wheelCtx = wheelCanvas.getContext('2d');
+        const wheelSize = wheelCanvas.width;
+        const wheelCenter = wheelSize / 2;
+
+        function hsvToRgb(h, s, v) {
+            let r, g, b;
+            let i = Math.floor(h / 60) % 6;
+            let f = h / 60 - Math.floor(h / 60);
+            let p = v * (1 - s);
+            let q = v * (1 - f * s);
+            let t = v * (1 - (1 - f) * s);
+            switch(i) {
+                case 0: r = v; g = t; b = p; break;
+                case 1: r = q; g = v; b = p; break;
+                case 2: r = p; g = v; b = t; break;
+                case 3: r = p; g = q; b = v; break;
+                case 4: r = t; g = p; b = v; break;
+                case 5: r = v; g = p; b = q; break;
+            }
+            return [Math.round(r * 255), Math.round(g * 255), Math.round(b * 255)];
+        }
+
+        function drawColorWheel() {
+            const img = wheelCtx.createImageData(wheelSize, wheelSize);
+            for(let y = 0; y < wheelSize; y++) {
+                for(let x = 0; x < wheelSize; x++) {
+                    const i = (y * wheelSize + x) * 4;
+                    const dx = x - wheelCenter;
+                    const dy = y - wheelCenter;
+                    const dist = Math.sqrt(dx*dx + dy*dy);
+                    if(dist <= wheelCenter) {
+                        let angle = Math.atan2(dy, dx);
+                        if(angle < 0) angle += Math.PI * 2;
+                        let hue = (angle * 180 / Math.PI);
+                        let sat = dist / wheelCenter;
+                        let [r, g, b] = hsvToRgb(hue, sat, 1);
+                        img.data[i] = r;
+                        img.data[i+1] = g;
+                        img.data[i+2] = b;
+                        img.data[i+3] = 255;
+                    }
+                }
+            }
+            wheelCtx.putImageData(img, 0, 0);
+        }
+    </script>
+</body>
+</html>

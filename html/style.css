@@ -2,9 +2,10 @@ body {
     margin: 0;
     padding: 0;
     font-family: 'Segoe UI', Roboto, Arial, sans-serif;
-    background: transparent;
+    background: transparent !important;
     overflow: hidden;
     user-select: none;
+    color: #fff;
 }
 
 #container {
@@ -16,20 +17,24 @@ body {
     pointer-events: none;
 }
 
+/* =============================================
+   1. Placement UI (Floating Keycaps Style)
+   ============================================= */
 #placement-ui {
     position: absolute;
-    bottom: 8%;
+    bottom: 15px; 
     left: 50%;
     transform: translateX(-50%);
-    display: flex;
+    display: none;
     flex-direction: column;
     align-items: center;
     gap: 18px;
+    pointer-events: all;
 }
-
 .ui-title {
     background: transparent;
     padding: 0;
+    margin-bottom: 5px;
     color: rgba(255, 255, 255, 0.95);
     font-size: 13px;
     font-weight: 800;
@@ -39,26 +44,33 @@ body {
     position: relative;
 }
 
-.ui-title::after {
-    content: '';
-    position: absolute;
-    bottom: -8px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 40px;
-    height: 2px;
-    background: #ffffff;
-    border-radius: 2px;
-    box-shadow: 0 0 10px rgba(255, 255, 255, 0.8);
-}
-
 .ui-card {
+    position: relative;
     background: transparent !important;
     border: none !important;
     box-shadow: none !important;
-    padding: 0;
-    border-radius: 0;
+    padding: 15px 40px;
+    border-radius: 12px;
     backdrop-filter: none !important;
+}
+.ui-card::before {
+    content: '';
+    position: absolute;
+    bottom: -250px; 
+    left: 50%;
+    transform: translateX(-50%);
+    width: 700px; 
+    height: 500px; 
+    max-width: 100vw;
+    background: radial-gradient(circle at 50% 50%, rgba(248, 111, 26, 0.4) 0%, transparent 50%);
+    animation: pulseGlow 2.5s infinite ease-in-out;
+    z-index: -1;
+    pointer-events: none;
+}
+@keyframes pulseGlow {
+    0% { opacity: 0.3; transform: translateX(-50%) scale(0.95); }
+    50% { opacity: 1; transform: translateX(-50%) scale(1.05); }
+    100% { opacity: 0.3; transform: translateX(-50%) scale(0.95); }
 }
 
 #ui-controls {
@@ -66,8 +78,8 @@ body {
     flex-direction: row;
     align-items: center;
     gap: 0;
+    z-index: 1;
 }
-
 .control-group {
     display: flex;
     flex-direction: column;
@@ -75,13 +87,11 @@ body {
     gap: 8px;
     padding: 0 18px;
 }
-
 .control-divider {
     width: 1px;
     height: 40px;
-    background: linear-gradient(to bottom, transparent, rgba(255, 255, 255, 0.15), transparent);
+    background: linear-gradient(to bottom, transparent, rgba(255, 255, 255, 0.5), transparent);
 }
-
 .control-btn {
     background: transparent;
     border: none;
@@ -90,10 +100,9 @@ body {
     align-items: center;
     gap: 10px;
 }
-
 .control-btn .ctrl-key {
     background: linear-gradient(145deg, #ffffff, #e6e6e6);
-    color: #1a1a1a;
+    color: #000; 
     min-width: 42px;
     height: 42px;
     padding: 0 10px;
@@ -110,9 +119,8 @@ body {
         inset 0 1px 0 rgba(255,255,255,0.8);
     box-sizing: border-box;
 }
-
 .control-btn .ctrl-text {
-    color: rgba(255, 255, 255, 0.85);
+    color: rgba(255, 255, 255, 0.95);
     font-size: 10px;
     font-weight: 700;
     text-transform: uppercase;
@@ -121,53 +129,109 @@ body {
     white-space: nowrap;
 }
 
-/* Moved to dead center of the screen */
+/* =============================================
+   GTA V Native UI Shared Styles 
+   ============================================= */
+.gta-ui-card {
+    background: rgba(0, 0, 0, 0.6); 
+    border: 1px solid rgba(255,255,255,0.05);
+    border-radius: 4px;
+    box-shadow: 0 0 20px rgba(0,0,0,0.5);
+    color: #fff;
+}
+
+.gta-label {
+    color: rgba(255,255,255,0.6);
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+.gta-action {
+    color: #F86F1A;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    cursor: pointer;
+}
+.gta-title {
+    color: #ffffff;
+    font-size: 18px;
+    font-weight: 800;
+    margin: 0;
+    text-transform: uppercase;
+    letter-spacing: -0.5px;
+}
+
+.gta-btn {
+    background: #F86F1A;
+    color: #fff;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 3px;
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: 0 0 8px rgba(248, 111, 26, 0.6);
+}
+.gta-btn:hover { 
+    background: #d65f12; 
+    box-shadow: 0 0 12px rgba(248, 111, 26, 0.8);
+}
+.gta-btn-ghost {
+    background: transparent;
+    color: #F86F1A;
+    border: 1px solid #F86F1A;
+    padding: 8px 16px;
+    border-radius: 3px;
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.gta-btn-ghost:hover { 
+    background: rgba(248, 111, 26, 0.1); 
+    box-shadow: 0 0 8px rgba(248, 111, 26, 0.4);
+}
+
+/* =============================================
+   2. Control Panel UI (GTA V Style)
+   ============================================= */
 #control-panel-ui {
     position: absolute;
     top: 50%;
     left: 50%;
-    transform: translate(-50%, -50%);
+    transform: translate(-50%, -50%) scale(1);
     pointer-events: all;
+    display: none;
+    width: 380px;
 }
-.cp-card {
-    background: rgba(20, 20, 20, 0.98);
-    padding: 25px;
-    border-radius: 12px;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.7);
-    width: 360px;
-    border: 1px solid #333;
+.cp-header {
     display: flex;
-    flex-direction: column;
+    justify-content: space-between;
     align-items: center;
+    padding: 12px 20px;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
 }
-.cp-card h2 {
-    margin: 0 0 20px 0;
-    color: #fff;
-    font-size: 14px;
-    text-transform: uppercase;
-    letter-spacing: 1.5px;
-    font-weight: 700;
-    color: #aaa;
-}
-.cp-main {
+.cp-body {
+    padding: 20px;
     display: flex;
     gap: 20px;
-    align-items: center;
-    width: 100%;
-    justify-content: center;
 }
 .cp-wheel-container {
     position: relative;
-    width: 180px;
-    height: 180px;
+    width: 140px;
+    height: 140px;
     flex-shrink: 0;
 }
 #color-wheel {
-    width: 180px;
-    height: 180px;
+    width: 140px;
+    height: 140px;
     border-radius: 50%;
     cursor: crosshair;
-    box-shadow: 0 0 15px rgba(0,0,0,0.5) inset, 0 0 5px rgba(0,0,0,0.5);
 }
 #wheel-cursor {
     position: absolute;
@@ -177,71 +241,55 @@ body {
     border-radius: 50%;
     pointer-events: none;
     transform: translate(-50%, -50%);
-    box-shadow: 0 0 2px rgba(0,0,0,0.8);
     top: 50%;
     left: 50%;
 }
 .cp-sliders {
     display: flex;
     flex-direction: column;
-    gap: 20px;
+    gap: 15px;
     flex-grow: 1;
+    justify-content: center;
 }
 .cp-slider-block {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 5px;
 }
 .cp-slider-label {
     display: flex;
     justify-content: space-between;
-    font-size: 12px;
-    color: #ccc;
-    font-weight: 600;
+    font-size: 11px;
+    color: rgba(255,255,255,0.6);
+    font-weight: 700;
     text-transform: uppercase;
+}
+.cp-slider-label span:last-child {
+    color: #fff;
 }
 .cp-slider-track {
     position: relative;
     width: 100%;
-    height: 12px;
+    height: 8px;
     background: #111;
-    border-radius: 6px;
+    border-radius: 4px;
     cursor: pointer;
-    border: 1px solid #333;
 }
 .cp-slider-fill {
     position: absolute;
     height: 100%;
-    border-radius: 6px;
-    pointer-events: none;
-}
-#brightness-fill {
-    background: linear-gradient(to right, #111, #fff);
-    width: 80%;
-}
-#distance-fill {
-    background: linear-gradient(to right, #111, #fff);
-    width: 80%;
-}
-#width-fill {
-    background: linear-gradient(to right, #111, #fff);
-    width: 80%;
-}
-#bv-fill {
-    background: linear-gradient(to right, #000, #fff);
-    width: 100%;
+    border-radius: 4px;
+    background: rgba(255,255,255,0.8);
 }
 .cp-slider-handle {
     position: absolute;
-    width: 18px;
-    height: 18px;
+    width: 14px;
+    height: 14px;
     background: #fff;
     border-radius: 50%;
     top: 50%;
     transform: translate(-50%, -50%);
-    box-shadow: 0 0 4px rgba(0,0,0,0.8);
-    pointer-events: none;
-    border: 2px solid #ddd;
+    box-shadow: 0 0 2px rgba(0,0,0,0.8);
 }
 .cp-preview {
     width: 100%;
@@ -263,40 +311,40 @@ body {
     background: #fff;
 }
 .cp-preview span {
-    color: #888;
+    color: rgba(255,255,255,0.8);
     font-size: 12px;
     text-transform: uppercase;
     font-weight: 600;
     letter-spacing: 1px;
 }
-.cp-actions {
+.cp-footer {
+    padding: 15px 20px;
     display: flex;
     justify-content: space-between;
-    width: 100%;
-    margin-top: 20px;
     gap: 10px;
+    border-top: 1px solid rgba(255,255,255,0.1);
 }
-.cp-actions button {
+.cp-footer button {
     flex: 1;
-    padding: 12px 5px;
-    border: none;
-    border-radius: 6px;
-    cursor: pointer;
-    font-weight: 700;
-    color: #fff;
-    text-transform: uppercase;
-    transition: all 0.2s;
-    font-size: 12px;
+    padding: 8px;
+    font-size: 11px;
 }
-#cp-cancel { background: #444; }
-#cp-cancel:hover { background: #555; }
-#cp-confirm { background: #F86F1A; }
-#cp-confirm:hover { background: #d65f12; }
-#cp-sync { background: #3498db; flex: 1.5; }
-#cp-sync:hover { background: #2980b9; }
+
+.cp-footer .gta-btn {
+    color: #000; 
+}
+.cp-footer .gta-btn-ghost {
+    background: #fff;
+    color: #000;
+    border-color: #fff;
+}
+.cp-footer .gta-btn-ghost:hover {
+    background: #ddd;
+    box-shadow: 0 0 8px rgba(255, 255, 255, 0.4);
+}
 
 /* =============================================
-   Modern Shop UI (Sharp & Clean)
+   3. Shop UI (GTA V Style)
    ============================================= */
 #shop-ui {
     position: absolute;
@@ -304,252 +352,193 @@ body {
     left: 0;
     width: 100%;
     height: 100%;
-    display: flex;
+    display: none;
     justify-content: center;
     align-items: center;
     pointer-events: all;
+    background: rgba(0, 0, 0, 0.6); /* Darkened background to replace blur */
 }
-.shop-overlay {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: transparent; 
-    backdrop-filter: none;
-}
-
-@keyframes shopReveal {
-    0% { opacity: 0; transform: translateY(20px) scale(0.95); }
-    100% { opacity: 1; transform: translateY(0) scale(1); }
-}
-
 .shop-card {
-    position: relative;
-    background: rgba(15, 15, 15, 0.98);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 0; 
-    box-shadow: 0 15px 50px rgba(0,0,0,0.5), 0 0 30px rgba(248, 111, 26, 0.05);
     width: 450px;
+    height: 500px; 
     max-height: 80vh;
     overflow: hidden;
     display: flex;
     flex-direction: column;
-    animation: shopReveal 0.4s cubic-bezier(0.16, 1, 0.3, 1);
 }
-
-.shop-view {
-    display: flex;
-    flex-direction: column;
-    height: 100%;
-}
-
 .shop-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 20px 25px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    padding: 12px 20px;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
     flex-shrink: 0;
 }
-.shop-header h2 {
-    margin: 0;
-    color: #fff;
-    font-size: 16px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 1.5px;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-.shop-header h2 i {
-    color: #F86F1A;
-}
-.shop-close {
-    color: #888;
-    font-size: 16px;
-    cursor: pointer;
-    transition: all 0.2s;
-    width: 32px;
-    height: 32px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 0; 
-}
-.shop-close:hover {
-    color: #fff;
-    background: rgba(255, 255, 255, 0.1);
-}
-
 .shop-items-container {
     overflow-y: auto;
     flex-grow: 1;
 }
-.shop-items-container::-webkit-scrollbar {
-    width: 4px;
-}
-.shop-items-container::-webkit-scrollbar-track {
-    background: transparent;
-}
-.shop-items-container::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.1);
-}
-
 .shop-item {
-    padding: 20px 25px; 
+    padding: 15px 20px;
     display: flex;
-    gap: 20px;
-    align-items: stretch; 
-    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    gap: 15px;
+    align-items: center;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
 }
-.shop-item:last-child {
-    border-bottom: none;
-}
-
 .shop-item-icon {
-    width: 100px;
-    height: 100px;
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 0; 
+    width: 60px;
+    height: 60px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1);
     display: flex;
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
-}
-.shop-item-icon img {
-    width: 100%;
-    height: 100%;
-    object-fit: contain;
-    padding: 5px;
-    box-sizing: border-box;
-}
-.shop-item-icon i {
-    font-size: 36px;
+    font-size: 24px;
     color: #F86F1A;
 }
-
+.shop-item-icon img {
+    width: 80%;
+    height: 80%;
+    object-fit: contain;
+    mix-blend-mode: lighten;
+}
 .shop-item-details {
     flex-grow: 1;
     display: flex;
     flex-direction: column;
-    justify-content: space-between; 
-    min-height: 100px; 
 }
 .item-info h3 {
-    margin: 0 0 8px 0;
+    margin: 0 0 4px 0;
     color: #fff;
-    font-size: 18px;
-    font-weight: 600;
+    font-size: 15px;
+    font-weight: 700;
+    text-transform: uppercase;
 }
 .item-info p {
     margin: 0;
-    color: #aaa;
-    font-size: 13px;
-    line-height: 1.4;
+    color: rgba(255,255,255,0.6);
+    font-size: 12px;
+    line-height: 1.3;
+}
+.shop-item-actions {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 8px;
+}
+.item-price {
+    color: #fff;
+    font-size: 14px;
+    font-weight: 700;
+}
+.coming-soon {
+    opacity: 0.5;
+    pointer-events: none;
 }
 
-.shop-item-actions {
+.coming-soon-tag, .add-cart-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    min-width: 110px;
+    padding: 6px 12px;
+    border-radius: 3px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    box-sizing: border-box;
+}
+.coming-soon-tag {
+    color: rgba(255,255,255,0.6);
+    border: 1px solid rgba(255,255,255,0.2);
+    background: transparent;
+}
+.add-cart-btn {
+    background: transparent;
+    color: #F86F1A;
+    border: 1px solid #F86F1A;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.add-cart-btn:hover { 
+    background: rgba(248, 111, 26, 0.1); 
+    box-shadow: 0 0 8px rgba(248, 111, 26, 0.4);
+}
+
+.shop-footer {
+    padding: 15px 20px;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-top: 15px;
+    border-top: 1px solid rgba(255,255,255,0.1);
+    flex-shrink: 0;
 }
-.item-price {
-    color: #F86F1A;
-    font-size: 16px;
-    font-weight: 700;
-}
-
-.add-cart-btn {
-    background: transparent;
-    border: 1px solid #F86F1A;
-    color: #F86F1A;
-    padding: 8px 16px;
-    border-radius: 0;
-    cursor: pointer;
-    font-size: 12px;
+.shop-price {
+    color: rgba(255,255,255,0.8);
+    font-size: 11px;
     font-weight: 700;
     text-transform: uppercase;
-    transition: all 0.2s;
-    display: flex;
-    align-items: center;
-    gap: 8px;
 }
-.add-cart-btn:hover {
-    background: #F86F1A;
+.shop-price span {
     color: #fff;
-}
-
-/* Coming Soon Styles */
-.coming-soon {
-    opacity: 0.4;
-    pointer-events: none;
-    filter: grayscale(80%);
-}
-.coming-soon .shop-item-icon i {
-    color: #888;
-}
-.coming-soon .item-info h3 {
-    color: #888;
-    font-style: italic;
-}
-.coming-soon .item-info p {
-    color: #666;
+    font-size: 16px;
+    margin-left: 5px;
 }
 
 /* Cart Items */
 .cart-item {
     display: flex;
     align-items: center;
-    padding: 15px 25px;
+    padding: 15px 20px;
     border-bottom: 1px solid rgba(255, 255, 255, 0.05);
     gap: 15px;
 }
-.cart-item:last-child {
-    border-bottom: none;
-}
 .cart-item-icon {
-    width: 50px;
-    height: 50px;
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    width: 40px;
+    height: 40px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1);
     display: flex;
     align-items: center;
     justify-content: center;
+    font-size: 16px;
+    color: #F86F1A;
+    flex-shrink: 0;
 }
 .cart-item-icon img {
     width: 80%;
     height: 80%;
     object-fit: contain;
+    mix-blend-mode: lighten;
 }
 .cart-item-details {
     flex-grow: 1;
 }
 .cart-item-details h4 {
-    margin: 0 0 5px 0;
+    margin: 0 0 2px 0;
     color: #fff;
-    font-size: 14px;
-    font-weight: 600;
+    font-size: 13px;
+    font-weight: 700;
+    text-transform: uppercase;
 }
 .cart-item-price {
-    color: #F86F1A;
-    font-size: 13px;
-    font-weight: 600;
+    color: rgba(255,255,255,0.6);
+    font-size: 11px;
 }
 .cart-qty {
     display: flex;
     align-items: center;
     gap: 8px;
+    flex-shrink: 0;
 }
 .qty-btn {
-    width: 28px; 
-    height: 28px; 
+    width: 24px; 
+    height: 24px; 
     background: rgba(255, 255, 255, 0.05);
     border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 0; 
+    border-radius: 3px; 
     display: flex;
     align-items: center;
     justify-content: center;
@@ -567,118 +556,112 @@ body {
     color: #fff;
     font-size: 14px;
     font-weight: 700;
-    min-width: 24px;
+    min-width: 20px;
     text-align: center;
-}
-
-#cart-items-container {
-    padding: 10px 0;
 }
 .cart-empty {
     text-align: center;
-    color: #888;
+    color: rgba(255,255,255,0.4);
     padding: 40px 0;
     font-style: italic;
 }
-
-.shop-footer {
-    padding: 20px 25px;
-    background: rgba(0, 0, 0, 0.3);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    border-top: 1px solid rgba(255, 255, 255, 0.05);
-    flex-shrink: 0;
-    gap: 15px;
-}
-.shop-price {
-    color: #ccc;
-    font-size: 14px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-}
-.shop-price span {
-    color: #F86F1A;
-    font-size: 18px;
-    margin-left: 5px;
-    transition: all 0.2s; 
-}
-
-#checkout-btn {
-    background: #F86F1A;
-    color: #fff;
-    border: none;
-    padding: 10px 20px;
-    border-radius: 0; 
-    font-size: 13px;
-    font-weight: 700;
-    text-transform: uppercase;
-    cursor: pointer;
-    transition: all 0.2s;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-#checkout-btn:hover {
-    background: #d65f12;
-}
-
-#back-btn {
-    background: transparent;
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    color: #ccc;
-    padding: 10px 16px;
-    border-radius: 0;
-    font-size: 13px;
-    font-weight: 700;
-    text-transform: uppercase;
-    cursor: pointer;
-    transition: all 0.2s;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-#back-btn:hover {
-    border-color: #fff;
-    color: #fff;
-}
-
 .shop-pay-btns {
     display: flex;
     gap: 10px;
 }
 .shop-pay-btns button {
     border: none;
-    padding: 10px 20px;
-    border-radius: 0; 
-    font-size: 13px;
+    padding: 8px 12px;
+    border-radius: 3px; 
+    font-size: 11px;
     font-weight: 700;
     text-transform: uppercase;
     cursor: pointer;
-    transition: all 0.2s;
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 5px;
     color: #fff;
 }
 
-#shop-cash-btn {
-    background: transparent;
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    color: #ccc;
+/* Cut View Styles */
+.cut-summary {
+    padding: 20px;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+    text-align: center;
 }
-#shop-cash-btn:hover {
-    border-color: #fff;
+.cut-summary .shop-price {
+    font-size: 14px;
+}
+.cut-summary .shop-price span {
+    color: #F86F1A;
+    font-size: 24px;
+    display: block;
+    margin-top: 5px;
+}
+.cut-log-item {
+    padding: 10px 20px;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.cut-log-item:last-child {
+    border-bottom: none;
+}
+.cut-log-buyer {
+    font-size: 13px;
     color: #fff;
-    background: rgba(255, 255, 255, 0.05);
+}
+.cut-log-cut {
+    font-size: 12px;
+    color: #F86F1A;
+    font-weight: 700;
 }
 
-#shop-card-btn {
-    background: #F86F1A;
+/* =============================================
+   Animations 
+   ============================================= */
+
+@keyframes revealCenter {
+    0% { opacity: 0; transform: translate(-50%, -50%) scale(0.95); }
+    100% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
 }
-#shop-card-btn:hover {
-    background: #d65f12;
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(248, 111, 26, 0.3);
+@keyframes hideCenter {
+    0% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+    100% { opacity: 0; transform: translate(-50%, -50%) scale(0.95); }
 }
+#control-panel-ui.reveal { animation: revealCenter 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+#control-panel-ui.hide { animation: hideCenter 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+
+@keyframes revealPlacement {
+    0% { opacity: 0; transform: translateX(-50%) scale(0.95) translateY(10px); }
+    100% { opacity: 1; transform: translateX(-50%) scale(1) translateY(0); }
+}
+@keyframes hidePlacement {
+    0% { opacity: 1; transform: translateX(-50%) scale(1) translateY(0); }
+    100% { opacity: 0; transform: translateX(-50%) scale(0.95) translateY(10px); }
+}
+#placement-ui.reveal { animation: revealPlacement 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+#placement-ui.hide { animation: hidePlacement 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+
+@keyframes revealBg {
+    0% { opacity: 0; }
+    100% { opacity: 1; }
+}
+@keyframes hideBg {
+    0% { opacity: 1; }
+    100% { opacity: 0; }
+}
+#shop-ui.reveal-bg { animation: revealBg 0.3s ease forwards; }
+#shop-ui.hide-bg { animation: hideBg 0.3s ease forwards; }
+
+@keyframes revealCard {
+    0% { opacity: 0; transform: scale(0.95) translateY(10px); }
+    100% { opacity: 1; transform: scale(1) translateY(0); }
+}
+@keyframes hideCard {
+    0% { opacity: 1; transform: scale(1) translateY(0); }
+    100% { opacity: 0; transform: scale(0.95) translateY(10px); }
+}
+.shop-card.reveal-card { animation: revealCard 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+.shop-card.hide-card { animation: hideCard 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; }

@@ -7,9 +7,13 @@ const controlPanel = document.getElementById('control-panel-ui');
 const placementUI = document.getElementById('placement-ui');
 const uiControls = document.getElementById('ui-controls');
 const shopUI = document.getElementById('shop-ui');
+
+// Shop Views
 const shopView = document.getElementById('shop-view');
 const cartView = document.getElementById('cart-view');
+const cutView = document.getElementById('cut-view');
 const cartItemsContainer = document.getElementById('cart-items-container');
+const cutLogContainer = document.getElementById('cut-log-container');
 
 const brightnessSlider = document.getElementById('brightness-slider');
 const brightnessHandle = document.getElementById('brightness-handle');
@@ -59,6 +63,63 @@ let isDraggingBV = false;
 let shopItems = {};
 let cart = {};
 
+// =============================================
+// UI Show/Hide Helpers
+// =============================================
+function showUI(el, displayType = 'flex') {
+    el.style.display = displayType;
+    el.classList.remove('hide');
+    el.classList.add('reveal');
+}
+function hideUI(el) {
+    el.classList.remove('reveal');
+    el.classList.add('hide');
+    setTimeout(() => {
+        el.style.display = 'none';
+        el.classList.remove('hide');
+    }, 300);
+}
+
+function showShopView(viewId) {
+    [shopView, cartView, cutView].forEach(v => v.style.display = 'none');
+    const view = document.getElementById(viewId);
+    view.style.display = 'flex';
+    view.classList.remove('hide-card');
+    view.classList.add('reveal-card');
+}
+
+function showShopUI(initialView = 'shop-view') {
+    shopUI.style.display = 'flex';
+    shopUI.classList.remove('hide-bg');
+    shopUI.classList.add('reveal-bg');
+    showShopView(initialView);
+}
+function hideShopUI() {
+    shopUI.classList.remove('reveal-bg');
+    shopUI.classList.add('hide-bg');
+    [shopView, cartView, cutView].forEach(v => {
+        v.classList.remove('reveal-card');
+        v.classList.add('hide-card');
+    });
+    
+    setTimeout(() => {
+        shopUI.style.display = 'none';
+        shopUI.classList.remove('hide-bg');
+        [shopView, cartView, cutView].forEach(v => v.classList.remove('hide-card'));
+    }, 300);
+}
+
+function playSound(sound, set) {
+    fetch(`https://${GetParentResourceName()}/playSound`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json; charset=UTF-8' },
+        body: JSON.stringify({ sound: sound, set: set })
+    });
+}
+
+// =============================================
+// Color Math
+// =============================================
 function hsvToRgb(h, s, v) {
     let r, g, b;
     let i = Math.floor(h / 60) % 6;
@@ -100,6 +161,9 @@ function rgbToHex(r, g, b) {
     return "#" + (1 << 24 | r << 16 | g << 8 | b).toString(16).slice(1).toUpperCase();
 }
 
+// =============================================
+// Canvas Drawing
+// =============================================
 function drawColorWheel() {
     const img = wheelCtx.createImageData(wheelSize, wheelSize);
     for(let y = 0; y < wheelSize; y++) {
@@ -164,6 +228,9 @@ function updateUI() {
     bvHandle.style.background = hex;
 }
 
+// =============================================
+// Live Updates
+// =============================================
 let lastUpdate = 0;
 function sendLiveUpdate() {
     if (currentNetId == null) return;
@@ -240,6 +307,9 @@ function updateBVSlider(e) {
     sendLiveUpdate();
 }
 
+// =============================================
+// Mouse Event Listeners
+// =============================================
 wheelCanvas.addEventListener('mousedown', (e) => {
     isDraggingWheel = true;
     updateWheel(e);
@@ -281,6 +351,7 @@ document.addEventListener('mouseup', () => {
     isDraggingBV = false;
 });
 
+// Escape Key Listener
 document.addEventListener('keydown', function(e) {
     if (e.key === 'Escape') {
         if (controlPanel.style.display === 'block') {
@@ -288,17 +359,22 @@ document.addEventListener('keydown', function(e) {
         } else if (shopUI.style.display === 'flex') {
             if (cartView.style.display === 'flex') {
                 document.getElementById('back-btn').click();
+            } else if (cutView.style.display === 'flex') {
+                document.getElementById('cut-close-action').click();
             } else {
-                document.getElementById('shop-close-btn').click();
+                document.getElementById('shop-close-action').click();
             }
         }
     }
 });
 
+// =============================================
+// Cart Logic
+// =============================================
 function updateCartTotals() {
     let total = 0;
     for (let item in cart) {
-        total += (shopItems[item].price * cart[item]);
+        total += (cart[item].price * cart[item].qty);
     }
     document.getElementById('shop-cart-total').innerText = '$' + total;
     document.getElementById('cart-total-val').innerText = '$' + total;
@@ -309,9 +385,9 @@ function renderCart() {
     let hasItems = false;
 
     for (let item in cart) {
-        if (cart[item] > 0) {
+        if (cart[item].qty > 0) {
             hasItems = true;
-            let itemData = shopItems[item];
+            let itemData = cart[item];
             let div = document.createElement('div');
             div.className = 'cart-item';
             div.innerHTML = `
@@ -319,12 +395,12 @@ function renderCart() {
                     <img src="nui://qb-inventory/html/images/${item}.png" alt="${item}">
                 </div>
                 <div class="cart-item-details">
-                    <h4>Portable Studio Light</h4>
+                    <h4>${itemData.name}</h4>
                     <div class="cart-item-price">$${itemData.price} each</div>
                 </div>
                 <div class="cart-qty">
                     <div class="qty-btn cart-minus" data-item="${item}"><i class="fas fa-minus"></i></div>
-                    <div class="qty-val">${cart[item]}</div>
+                    <div class="qty-val">${itemData.qty}</div>
                     <div class="qty-btn cart-plus" data-item="${item}"><i class="fas fa-plus"></i></div>
                 </div>
             `;
@@ -338,8 +414,9 @@ function renderCart() {
 
     document.querySelectorAll('.cart-plus').forEach(btn => {
         btn.addEventListener('click', function() {
+            playSound("CONTINUE", "HUD_FRONTEND_DEFAULT_SOUNDSET");
             let item = this.getAttribute('data-item');
-            cart[item]++;
+            cart[item].qty++;
             renderCart();
             updateCartTotals();
         });
@@ -347,9 +424,10 @@ function renderCart() {
 
     document.querySelectorAll('.cart-minus').forEach(btn => {
         btn.addEventListener('click', function() {
+            playSound("CONTINUE", "HUD_FRONTEND_DEFAULT_SOUNDSET");
             let item = this.getAttribute('data-item');
-            cart[item]--;
-            if (cart[item] <= 0) delete cart[item];
+            cart[item].qty--;
+            if (cart[item].qty <= 0) delete cart[item];
             renderCart();
             updateCartTotals();
         });
@@ -358,6 +436,9 @@ function renderCart() {
     updateCartTotals();
 }
 
+// =============================================
+// NUI Message Handler
+// =============================================
 window.addEventListener('message', function(event) {
     const data = event.data;
 
@@ -382,14 +463,10 @@ window.addEventListener('message', function(event) {
                 uiControls.appendChild(group);
             });
         }
-        
-        placementUI.style.display = 'flex';
+        showUI(placementUI, 'flex');
     } 
     else if (data.action === 'hide') {
-        placementUI.style.display = 'none';
-    }
-    else if (data.action === 'hideControlPanel') {
-        controlPanel.style.display = 'none';
+        hideUI(placementUI);
     }
     else if (data.action === 'openControlPanel') {
         currentNetId = data.netId;
@@ -412,7 +489,7 @@ window.addEventListener('message', function(event) {
         currentV = v;
         
         updateUI();
-        controlPanel.style.display = 'block';
+        showUI(controlPanel, 'block');
     }
     else if (data.action === 'openShop') {
         shopItems = data.items;
@@ -423,14 +500,39 @@ window.addEventListener('message', function(event) {
             if (priceEl) priceEl.innerText = shopItems[item].price;
         }
 
-        shopView.style.display = 'flex';
-        cartView.style.display = 'none';
+        // Show/hide photographer code input based on config
+        document.getElementById('photographer-code-section').style.display = data.requireCode ? 'block' : 'none';
+
         updateCartTotals();
-        shopUI.style.display = 'flex';
+        showShopUI('shop-view');
+    }
+    else if (data.action === 'openCutPanel') {
+        document.getElementById('cut-balance-val').innerText = '$' + data.balance;
+        
+        cutLogContainer.innerHTML = '';
+        if (data.log && data.log.length > 0) {
+            data.log.forEach(entry => {
+                let div = document.createElement('div');
+                div.className = 'cut-log-item';
+                div.innerHTML = `
+                    <div class="cut-log-buyer">${entry.buyer} spent $${entry.total}</div>
+                    <div class="cut-log-cut">Your Cut: $${entry.cut}</div>
+                `;
+                cutLogContainer.appendChild(div);
+            });
+        } else {
+            cutLogContainer.innerHTML = '<div class="cart-empty">No sales recorded yet.</div>';
+        }
+        
+        showShopUI('cut-view');
     }
 });
 
+// =============================================
+// Button Click Listeners
+// =============================================
 document.getElementById('cp-confirm').addEventListener('click', function() {
+    playSound("SELECT", "HUD_FRONTEND_DEFAULT_SOUNDSET");
     const [r, g, b] = hsvToRgb(currentH, currentS, currentV);
     fetch(`https://${GetParentResourceName()}/saveControlPanel`, {
         method: 'POST',
@@ -445,21 +547,27 @@ document.getElementById('cp-confirm').addEventListener('click', function() {
             width: currentWidth
         })
     }).then(() => {
-        controlPanel.style.display = 'none';
+        hideUI(controlPanel);
     });
 });
 
 document.getElementById('cp-cancel').addEventListener('click', function() {
+    playSound("BACK", "HUD_FRONTEND_DEFAULT_SOUNDSET");
     fetch(`https://${GetParentResourceName()}/closeControlPanel`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json; charset=UTF-8' },
         body: JSON.stringify({})
     }).then(() => {
-        controlPanel.style.display = 'none';
+        hideUI(controlPanel);
     });
 });
 
+document.getElementById('cp-close-action').addEventListener('click', function() {
+    document.getElementById('cp-cancel').click();
+});
+
 document.getElementById('cp-sync').addEventListener('click', function() {
+    playSound("SELECT", "HUD_FRONTEND_DEFAULT_SOUNDSET");
     const [r, g, b] = hsvToRgb(currentH, currentS, currentV);
     fetch(`https://${GetParentResourceName()}/syncAllLights`, {
         method: 'POST',
@@ -471,79 +579,119 @@ document.getElementById('cp-sync').addEventListener('click', function() {
             brightness: currentB
         })
     }).then(() => {
-        controlPanel.style.display = 'none';
+        hideUI(controlPanel);
     });
 });
 
-document.getElementById('shop-close-btn').addEventListener('click', function() {
+// Shop Listeners
+document.getElementById('shop-close-action').addEventListener('click', function() {
+    playSound("BACK", "HUD_FRONTEND_DEFAULT_SOUNDSET");
     fetch(`https://${GetParentResourceName()}/closeShop`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json; charset=UTF-8' },
         body: JSON.stringify({})
     }).then(() => {
-        shopUI.style.display = 'none';
+        hideShopUI();
     });
 });
 
-document.getElementById('cart-close-btn').addEventListener('click', function() {
+document.getElementById('cart-close-action').addEventListener('click', function() {
+    playSound("BACK", "HUD_FRONTEND_DEFAULT_SOUNDSET");
     fetch(`https://${GetParentResourceName()}/closeShop`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json; charset=UTF-8' },
         body: JSON.stringify({})
     }).then(() => {
-        shopUI.style.display = 'none';
+        hideShopUI();
+    });
+});
+
+document.getElementById('cut-close-action').addEventListener('click', function() {
+    playSound("BACK", "HUD_FRONTEND_DEFAULT_SOUNDSET");
+    fetch(`https://${GetParentResourceName()}/closeCutPanel`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json; charset=UTF-8' },
+        body: JSON.stringify({})
+    }).then(() => {
+        hideShopUI();
     });
 });
 
 document.querySelectorAll('.add-cart-btn').forEach(btn => {
     btn.addEventListener('click', function() {
+        playSound("SELECT", "HUD_FRONTEND_DEFAULT_SOUNDSET");
         let item = this.getAttribute('data-item');
-        cart[item] = (cart[item] || 0) + 1;
+        let name = this.getAttribute('data-name');
+        let price = parseInt(this.getAttribute('data-price'));
+        
+        if (!cart[item]) {
+            cart[item] = { name: name, price: price, qty: 0 };
+        }
+        cart[item].qty++;
         updateCartTotals();
         
         this.innerHTML = '<i class="fas fa-check"></i> Added';
         setTimeout(() => {
-            this.innerHTML = '<i class="fas fa-cart-plus"></i> Add to Cart';
+            this.innerHTML = 'Add to Cart';
         }, 1000);
     });
 });
 
-document.getElementById('checkout-btn').addEventListener('click', function() {
-    shopView.style.display = 'none';
-    cartView.style.display = 'flex';
+document.getElementById('checkout-btn').addEventListener('click', () => {
+    playSound("SELECT", "HUD_FRONTEND_DEFAULT_SOUNDSET");
+    showShopView('cart-view');
     renderCart();
 });
 
-document.getElementById('back-btn').addEventListener('click', function() {
-    cartView.style.display = 'none';
-    shopView.style.display = 'flex';
+document.getElementById('back-btn').addEventListener('click', () => {
+    playSound("BACK", "HUD_FRONTEND_DEFAULT_SOUNDSET");
+    showShopView('shop-view');
 });
 
 document.getElementById('shop-cash-btn').addEventListener('click', function() {
+    playSound("CONFIRM_BEEP_01", "HUD_FRONTEND_DEFAULT_SOUNDSET");
+    const code = document.getElementById('photographer-code-input').value;
     fetch(`https://${GetParentResourceName()}/processPurchase`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json; charset=UTF-8' },
         body: JSON.stringify({
             cart: cart,
-            paymentType: 'cash'
+            paymentType: 'cash',
+            photographerCode: code
         })
     }).then(() => {
-        shopUI.style.display = 'none';
+        hideShopUI();
     });
 });
 
 document.getElementById('shop-card-btn').addEventListener('click', function() {
+    playSound("CONFIRM_BEEP_01", "HUD_FRONTEND_DEFAULT_SOUNDSET");
+    const code = document.getElementById('photographer-code-input').value;
     fetch(`https://${GetParentResourceName()}/processPurchase`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json; charset=UTF-8' },
         body: JSON.stringify({
             cart: cart,
-            paymentType: 'bank'
+            paymentType: 'bank',
+            photographerCode: code
         })
     }).then(() => {
-        shopUI.style.display = 'none';
+        hideShopUI();
     });
 });
 
+// Cut Panel Listener
+document.getElementById('collect-cut-btn').addEventListener('click', function() {
+    playSound("CONFIRM_BEEP_01", "HUD_FRONTEND_DEFAULT_SOUNDSET");
+    fetch(`https://${GetParentResourceName()}/collectCut`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json; charset=UTF-8' },
+        body: JSON.stringify({})
+    }).then(() => {
+        hideShopUI();
+    });
+});
+
+// Initialize Canvas
 drawColorWheel();
 updateUI();

@@ -1,0 +1,30 @@
+{
+    "cutData": {
+        "JGV88408": {
+            "balance": 400,
+            "log": [
+                {
+                    "cut": 400,
+                    "total": 2000,
+                    "buyer": "DustyFrog6726"
+                },
+                {
+                    "cut": 100,
+                    "total": 500,
+                    "buyer": "DustyFrog6726"
+                },
+                {
+                    "cut": 100,
+                    "total": 500,
+                    "buyer": "DustyFrog6726"
+                }
+            ]
+        }
+    },
+    "codes": {
+        "CALLUM": "JGV88408",
+        "STUDIO1": "ABCD1234",
+        "PHOTO2": "EFGH5678",
+        "LIGHTS3": "IJKL9012"
+    }
+}

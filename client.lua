@@ -5,8 +5,8 @@ local currentPreview = nil
 local targetNetId = nil
 local editMode = false
 local currentPlacementDist = Config.PlacementDistance or 3.0
-local currentPlacementZOffset = 0.0
 local modelBottomOffset = 0.0
+local currentItemName = nil
 
 local function GetMyCid()
     local pData = QBCore.Functions.GetPlayerData()
@@ -89,6 +89,35 @@ local function CacheLightData(netId, data)
     end
 end
 
+local function UpdateLightCache(netId, data)
+    local ent = data.ent
+    if ent and ent ~= 0 then
+        data.entCoords = GetEntityCoords(ent)
+        
+        local off = Config.LightDefaults.offset or vector3(0.0, 0.0, 0.0)
+        local dirOffset = Config.LightDefaults.dirOffset or vector3(0.0, -1.0, 0.0)
+        
+        data.basePos = GetOffsetFromEntityInWorldCoords(ent, off.x, off.y, off.z)
+        local targetPos = GetOffsetFromEntityInWorldCoords(ent, off.x + dirOffset.x, off.y + dirOffset.y, off.z + dirOffset.z)
+        
+        local dir = targetPos - data.basePos
+        local len = #(dir)
+        data.forwardDir = len > 0 and (dir / len) or vector3(0.0, 0.0, -1.0)
+    end
+end
+
+AddEventHandler('onResourceStart', function(resource)
+    if resource == GetCurrentResourceName() then
+        AnimpostfxStopAll()
+    end
+end)
+
+AddEventHandler('onResourceStop', function(resource)
+    if resource == GetCurrentResourceName() then
+        AnimpostfxStopAll()
+    end
+end)
+
 RegisterNetEvent('QBCore:Client:OnPlayerLoaded', function()
     TriggerServerEvent('cb-lighting:server:RequestSync')
 end)
@@ -103,8 +132,7 @@ RegisterNetEvent('cb-lighting:client:SyncLights', function(lights)
     end
 end)
 
--- Added back to catch entity spawn and register state bag handlers
-RegisterNetEvent('cb-lighting:client:SpawnLight', function(netId, color, enabled, brightness, distance, width, owner, rot)
+RegisterNetEvent('cb-lighting:client:SpawnLight', function(netId, color, enabled, brightness, distance, width, owner, rot, itemType)
     local myCid = GetMyCid()
     PlacedLights[netId] = { 
         color = color, 
@@ -115,7 +143,8 @@ RegisterNetEvent('cb-lighting:client:SpawnLight', function(netId, color, enabled
         owner = owner,
         isOwner = (owner == myCid),
         ent = nil,
-        rot = rot
+        rot = rot,
+        itemType = itemType or 'worklight'
     }
     
     CreateThread(function()
@@ -125,7 +154,6 @@ RegisterNetEvent('cb-lighting:client:SpawnLight', function(netId, color, enabled
             if ent ~= 0 then
                 CacheLightData(netId, PlacedLights[netId])
                 
-                -- Listen for State Bag updates on this specific entity
                 AddStateBagChangeHandler('brightness', 'entity:' .. netId, function(bagName, key, value)
                     if PlacedLights[netId] then PlacedLights[netId].brightness = value end
                 end)
@@ -141,7 +169,7 @@ RegisterNetEvent('cb-lighting:client:SpawnLight', function(netId, color, enabled
                 AddStateBagChangeHandler('rot', 'entity:' .. netId, function(bagName, key, value)
                     if PlacedLights[netId] then 
                         PlacedLights[netId].rot = value 
-                        PlacedLights[netId].ent = nil -- Force cache refresh
+                        PlacedLights[netId].ent = nil 
                     end
                 end)
                 break
@@ -174,6 +202,7 @@ function OpenControlMenu(netId)
     end
     
     SetNuiFocus(true, true)
+    
     SendNUIMessage({
         action = 'openControlPanel',
         color = {r = r, g = g, b = b},
@@ -185,6 +214,11 @@ function OpenControlMenu(netId)
         netId = tonumber(netId)
     })
 end
+
+RegisterNUICallback('playSound', function(data, cb)
+    PlaySoundFrontend(-1, data.sound, data.set, 1)
+    cb('ok')
+end)
 
 RegisterNUICallback('liveUpdate', function(data, cb)
     local netId = tonumber(data.netId)
@@ -223,6 +257,7 @@ end)
 
 RegisterNUICallback('saveControlPanel', function(data, cb)
     SetNuiFocus(false, false)
+    
     if data and data.netId then
         if data.r then
             TriggerServerEvent('cb-lighting:server:SaveLightSettings', tonumber(data.netId), {
@@ -242,6 +277,7 @@ end)
 
 RegisterNUICallback('syncAllLights', function(data, cb)
     SetNuiFocus(false, false)
+    
     SendNUIMessage({ action = 'hideControlPanel' })
     
     if data.r then
@@ -255,9 +291,11 @@ end)
 
 function OpenShopUI()
     SetNuiFocus(true, true)
+    
     SendNUIMessage({
         action = 'openShop',
-        items = Config.ShopItems
+        items = Config.ShopItems,
+        requireCode = Config.RequirePhotographerCode
     })
 end
 
@@ -267,71 +305,99 @@ RegisterNUICallback('closeShop', function(data, cb)
 end)
 
 RegisterNUICallback('processPurchase', function(data, cb)
-    TriggerServerEvent('cb-lighting:server:ProcessPurchase', data.cart, data.paymentType)
+    TriggerServerEvent('cb-lighting:server:ProcessPurchase', data)
+    SetNuiFocus(false, false)
+    cb('ok')
+end)
+
+RegisterNetEvent('cb-lighting:client:OpenCutPanel', function(balance, log)
+    SetNuiFocus(true, true)
+    
+    SendNUIMessage({
+        action = 'openCutPanel',
+        balance = balance,
+        log = log
+    })
+end)
+
+RegisterNUICallback('closeCutPanel', function(data, cb)
+    SetNuiFocus(false, false)
+    cb('ok')
+end)
+
+RegisterNUICallback('collectCut', function(data, cb)
+    TriggerServerEvent('cb-lighting:server:CollectPhotographerCut')
     SetNuiFocus(false, false)
     cb('ok')
 end)
 
 local function SetupTarget()
-    local model = Config.LightModel
+    local models = {}
+    for _, model in pairs(Config.ItemModels) do
+        models[#models + 1] = model
+    end
 
     if Config.Target == 'qb-target' then
-        pcall(function() 
-            exports['qb-target']:RemoveTargetModel(model, { 
-                'Light Settings', 'Light Controls', 'Move', 'Rotate', 'Pick Up',
-                'Change Colour', 'Adjust Brightness', 'Turn Light On/Off', 'Sync All Lights' 
-            }) 
-        end)
+        for _, model in ipairs(models) do
+            pcall(function() 
+                exports['qb-target']:RemoveTargetModel(model, { 
+                    'Light Settings', 'Light Controls', 'Move', 'Rotate', 'Pick Up',
+                    'Change Colour', 'Adjust Brightness', 'Turn Light On/Off', 'Sync All Lights' 
+                }) 
+            end)
+        end
         
-        exports['qb-target']:AddTargetModel(model, {
-            options = {
-                {
-                    label = 'Light Controls',
-                    icon = 'fas fa-sliders',
-                    action = function(entity)
-                        OpenControlMenu(NetworkGetNetworkIdFromEntity(entity))
-                    end,
-                    canInteract = function(entity)
-                        local netId = NetworkGetNetworkIdFromEntity(entity)
-                        return PlacedLights[netId] and PlacedLights[netId].isOwner
-                    end
+        for _, model in ipairs(models) do
+            exports['qb-target']:AddTargetModel(model, {
+                options = {
+                    {
+                        label = 'Light Controls',
+                        icon = 'fas fa-sliders',
+                        action = function(entity)
+                            OpenControlMenu(NetworkGetNetworkIdFromEntity(entity))
+                        end,
+                        canInteract = function(entity)
+                            local netId = NetworkGetNetworkIdFromEntity(entity)
+                            return PlacedLights[netId] and PlacedLights[netId].isOwner
+                        end
+                    },
+                    {
+                        label = 'Move',
+                        icon = 'fas fa-arrows-up-down-left-right',
+                        action = function(entity)
+                            StartPlacement(NetworkGetNetworkIdFromEntity(entity))
+                        end,
+                        canInteract = function(entity)
+                            local netId = NetworkGetNetworkIdFromEntity(entity)
+                            return PlacedLights[netId] and PlacedLights[netId].isOwner
+                        end
+                    },
+                    {
+                        label = 'Rotate',
+                        icon = 'fas fa-sync',
+                        action = function(entity)
+                            StartRotateMode(NetworkGetNetworkIdFromEntity(entity))
+                        end,
+                        canInteract = function(entity)
+                            local netId = NetworkGetNetworkIdFromEntity(entity)
+                            return PlacedLights[netId] and PlacedLights[netId].isOwner
+                        end
+                    },
+                    {
+                        label = 'Pick Up',
+                        icon = 'fas fa-hand-paper',
+                        action = function(entity)
+                            TriggerServerEvent('cb-lighting:server:PickUp', NetworkGetNetworkIdFromEntity(entity))
+                        end,
+                        canInteract = function(entity)
+                            local netId = NetworkGetNetworkIdFromEntity(entity)
+                            return PlacedLights[netId] and PlacedLights[netId].isOwner
+                        end
+                    }
                 },
-                {
-                    label = 'Move',
-                    icon = 'fas fa-arrows-up-down-left-right',
-                    action = function(entity)
-                        StartPlacement(NetworkGetNetworkIdFromEntity(entity))
-                    end,
-                    canInteract = function(entity)
-                        local netId = NetworkGetNetworkIdFromEntity(entity)
-                        return PlacedLights[netId] and PlacedLights[netId].isOwner
-                    end
-                },
-                {
-                    label = 'Rotate',
-                    icon = 'fas fa-sync',
-                    action = function(entity)
-                        StartRotateMode(NetworkGetNetworkIdFromEntity(entity))
-                    end,
-                    canInteract = function(entity)
-                        local netId = NetworkGetNetworkIdFromEntity(entity)
-                        return PlacedLights[netId] and PlacedLights[netId].isOwner
-                    end
-                },
-                {
-                    label = 'Pick Up',
-                    icon = 'fas fa-hand-paper',
-                    action = function(entity)
-                        TriggerServerEvent('cb-lighting:server:PickUp', NetworkGetNetworkIdFromEntity(entity))
-                    end,
-                    canInteract = function(entity)
-                        local netId = NetworkGetNetworkIdFromEntity(entity)
-                        return PlacedLights[netId] and PlacedLights[netId].isOwner
-                    end
-                }
-            },
-            distance = Config.InteractionDistance
-        })
+                distance = Config.InteractionDistance
+            })
+        end
 
     elseif Config.Target == 'ox_target' then
         local oxOptions = {
@@ -384,7 +450,9 @@ local function SetupTarget()
                 end
             }
         }
-        exports['ox_target']:addModel(model, oxOptions)
+        for _, model in ipairs(models) do
+            exports['ox_target']:addModel(model, oxOptions)
+        end
     end
 end
 
@@ -405,11 +473,11 @@ function GetPlacementCoords(distOverride)
     return false, dest
 end
 
-function StartPlacement(existingNetId)
+function StartPlacement(existingNetId, itemName)
     local ped = PlayerPedId()
     PlacementMode = true
     currentPlacementDist = Config.PlacementDistance or 3.0
-    currentPlacementZOffset = 0.0
+    currentItemName = itemName or 'worklight'
     
     local color = Config.DefaultColor
     local enabled = Config.DefaultEnabled
@@ -433,6 +501,7 @@ function StartPlacement(existingNetId)
         brightness = data.brightness or Config.LightDefaults.brightness
         distance = data.distance or Config.LightDefaults.distance
         width = data.width or Config.LightDefaults.width
+        currentItemName = data.itemType or 'worklight'
         
         local ent = GetSafeEntityFromNetId(existingNetId)
         if ent ~= 0 then 
@@ -444,7 +513,7 @@ function StartPlacement(existingNetId)
         targetNetId = nil
     end
 
-    local model = Config.LightModel
+    local model = Config.ItemModels[currentItemName] or Config.ItemModels['worklight']
     RequestModel(model)
     local timeout = 0
     while not HasModelLoaded(model) do 
@@ -466,27 +535,38 @@ function StartPlacement(existingNetId)
     ShowUI("Lighting Controls", {
         { key = Config.Controls.Confirm.label, action = "Place" },
         { key = Config.Controls.Cancel.label, action = "Cancel" },
-        { key = Config.Controls.MoveUp.label, action = "Height Up" },
-        { key = Config.Controls.MoveDown.label, action = "Height Down" },
-        { key = Config.Controls.RotateLeft.label, action = "Rotate" }
+        { key = Config.Controls.RotateLeft.label, action = "Rotate" },
+        { key = Config.Controls.RotateRight.label, action = "Rotate" },
+        { key = Config.Controls.WheelUp.label, action = "Rotate" },
+        { key = Config.Controls.WheelDown.label, action = "Rotate" }
     })
 
     CreateThread(function()
         while PlacementMode do
-            if IsControlPressed(0, Config.Controls.MoveUp.key) then 
-                currentPlacementZOffset = math.min(10.0, currentPlacementZOffset + 0.05)
-            elseif IsControlPressed(0, Config.Controls.MoveDown.key) then 
-                currentPlacementZOffset = math.max(-10.0, currentPlacementZOffset - 0.05)
-            end
+            -- Disable Weapon Wheel so scrolling doesn't freeze the game
+            DisableControlAction(0, 14, true)
+            DisableControlAction(0, 15, true)
+            DisableControlAction(0, 99, true)
+            DisableControlAction(0, 100, true)
 
             local hit, dest = GetPlacementCoords(currentPlacementDist)
-            local targetZ = dest.z + currentPlacementZOffset + modelBottomOffset
+            
+            if not hit then
+                local groundRay = StartExpensiveSynchronousShapeTestLosProbe(dest, vector3(dest.x, dest.y, dest.z - 100.0), 511, PlayerPedId(), 7)
+                local _, hitGround, groundCoords = GetShapeTestResult(groundRay)
+                if hitGround == 1 then
+                    dest = groundCoords
+                end
+            end
+
+            local targetZ = dest.z + modelBottomOffset
             SetEntityCoords(currentPreview, dest.x, dest.y, targetZ)
             SetEntityLights(currentPreview, false)
 
             local rot = GetEntityRotation(currentPreview, 2)
             local rotChanged = false
             
+            -- Smooth rotation for arrows
             if IsControlPressed(0, Config.Controls.RotateLeft.key) then 
                 rot = rot + vector3(0, 0, Config.RotationSpeed)
                 rotChanged = true
@@ -496,8 +576,45 @@ function StartPlacement(existingNetId)
                 rotChanged = true
             end
             
+            -- Stepped rotation for mouse wheel (Using DisabledControlJustPressed)
+            if IsDisabledControlJustPressed(0, Config.Controls.WheelUp.key) then
+                rot = rot + vector3(0, 0, 5.0)
+                rotChanged = true
+            end
+            if IsDisabledControlJustPressed(0, Config.Controls.WheelDown.key) then
+                rot = rot - vector3(0, 0, 5.0)
+                rotChanged = true
+            end
+            
             if rotChanged then
                 SetEntityRotation(currentPreview, rot.x, rot.y, rot.z, 2, true)
+            end
+
+            local off = Config.LightDefaults.offset or vector3(0.0, 0.0, 0.0)
+            local dirOffset = Config.LightDefaults.dirOffset or vector3(0.0, -1.0, 0.0)
+            
+            local baseLightPos = GetOffsetFromEntityInWorldCoords(currentPreview, off.x, off.y, off.z)
+            local targetPos = GetOffsetFromEntityInWorldCoords(currentPreview, off.x + dirOffset.x, off.y + dirOffset.y, off.z + dirOffset.z)
+            local forwardDir = targetPos - baseLightPos
+            local len = #(forwardDir)
+            if len > 0 then forwardDir = forwardDir / len else forwardDir = vector3(0.0, 0.0, -1.0) end
+
+            local r, g, b = 255, 255, 255
+            if type(color) == "table" then
+                r = math.floor(color.r or 255)
+                g = math.floor(color.g or 255)
+                b = math.floor(color.b or 255)
+            end
+
+            local bVal = brightness + 0.0
+            local distVal = distance + 0.0
+            local widthVal = width + 0.0
+
+            if currentItemName == 'tubeworklight' then
+                DrawSpotLight(baseLightPos.x, baseLightPos.y, baseLightPos.z, 0.0, 0.0, -1.0, r, g, b, distVal, bVal, 10.0, widthVal, Config.LightDefaults.falloff or 10.0)
+                DrawLightWithRange(baseLightPos.x, baseLightPos.y, baseLightPos.z, r, g, b, 5.0, bVal)
+            else
+                DrawSpotLight(baseLightPos.x, baseLightPos.y, baseLightPos.z, forwardDir.x, forwardDir.y, forwardDir.z, r, g, b, distVal, bVal, Config.LightDefaults.roundness or 1.0, widthVal, Config.LightDefaults.falloff or 10.0)
             end
 
             if IsControlJustPressed(0, Config.Controls.Cancel.key) then
@@ -508,7 +625,7 @@ function StartPlacement(existingNetId)
                 local finalRot = GetEntityRotation(currentPreview, 2)
                 
                 PlayLightAnim('place')
-                TriggerServerEvent('cb-lighting:server:PlaceLight', finalCoords, finalRot, color, enabled, targetNetId, brightness, distance, width)
+                TriggerServerEvent('cb-lighting:server:PlaceLight', finalCoords, finalRot, color, enabled, targetNetId, brightness, distance, width, currentItemName)
             end
             Wait(0)
         end
@@ -535,19 +652,33 @@ function StartRotateMode(netId)
     NetworkRequestControlOfEntity(ent)
     while not NetworkHasControlOfEntity(ent) do Wait(10) end
 
+    FreezeEntityPosition(ent, false)
+
     QBCore.Functions.Notify('Rotate Mode Active', 'primary')
     
     ShowUI("Lighting Controls", {
         { key = Config.Controls.Confirm.label, action = "Save" },
         { key = Config.Controls.Cancel.label, action = "Cancel" },
-        { key = Config.Controls.RotateLeft.label, action = "Rotate" }
+        { key = Config.Controls.RotateLeft.label, action = "Rotate" },
+        { key = Config.Controls.RotateRight.label, action = "Rotate" },
+        { key = Config.Controls.WheelUp.label, action = "Rotate" },
+        { key = Config.Controls.WheelDown.label, action = "Rotate" }
     })
+
+    local initialRot = GetEntityRotation(ent, 2)
 
     CreateThread(function()
         while editMode do
+            -- Disable Weapon Wheel so scrolling doesn't freeze the game
+            DisableControlAction(0, 14, true)
+            DisableControlAction(0, 15, true)
+            DisableControlAction(0, 99, true)
+            DisableControlAction(0, 100, true)
+
             local rot = GetEntityRotation(ent, 2)
             local rotChanged = false
             
+            -- Smooth rotation for arrows
             if IsControlPressed(0, Config.Controls.RotateLeft.key) then 
                 rot = rot + vector3(0, 0, Config.RotationSpeed)
                 rotChanged = true
@@ -557,8 +688,19 @@ function StartRotateMode(netId)
                 rotChanged = true
             end
             
+            -- Stepped rotation for mouse wheel (Using DisabledControlJustPressed)
+            if IsDisabledControlJustPressed(0, Config.Controls.WheelUp.key) then
+                rot = rot + vector3(0, 0, 5.0)
+                rotChanged = true
+            end
+            if IsDisabledControlJustPressed(0, Config.Controls.WheelDown.key) then
+                rot = rot - vector3(0, 0, 5.0)
+                rotChanged = true
+            end
+            
             if rotChanged then
                 SetEntityRotation(ent, rot.x, rot.y, rot.z, 2, true)
+                UpdateLightCache(netId, PlacedLights[netId])
             end
 
             if IsControlJustPressed(0, Config.Controls.Confirm.key) then
@@ -567,6 +709,8 @@ function StartRotateMode(netId)
                 TriggerServerEvent('cb-lighting:server:UpdateRotation', netId, rot)
             elseif IsControlJustPressed(0, Config.Controls.Cancel.key) then
                 editMode = false
+                SetEntityRotation(ent, initialRot.x, initialRot.y, initialRot.z, 2, true)
+                UpdateLightCache(netId, PlacedLights[netId])
                 MakeEntitySolid(ent)
             end
             Wait(0)
@@ -608,17 +752,32 @@ CreateThread(function()
                     local brightness = (data.brightness or Config.LightDefaults.brightness) + 0.0
                     local distance = (data.distance or Config.LightDefaults.distance or 25.0) + 0.0
                     local width = (data.width or Config.LightDefaults.width or 25.0) + 0.0
+                    local itemType = data.itemType or 'worklight'
 
-                    DrawSpotLight(
-                        data.basePos.x, data.basePos.y, data.basePos.z,
-                        data.forwardDir.x, data.forwardDir.y, data.forwardDir.z,
-                        r, g, b,
-                        distance,
-                        brightness,
-                        Config.LightDefaults.roundness or 1.0,
-                        width,
-                        Config.LightDefaults.falloff or 10.0
-                    )
+                    if itemType == 'tubeworklight' then
+                        DrawSpotLight(
+                            data.basePos.x, data.basePos.y, data.basePos.z, 
+                            0.0, 0.0, -1.0, 
+                            r, g, b, 
+                            distance, 
+                            brightness, 
+                            10.0, 
+                            width, 
+                            Config.LightDefaults.falloff or 10.0
+                        )
+                        DrawLightWithRange(data.basePos.x, data.basePos.y, data.basePos.z, r, g, b, 5.0, brightness)
+                    else
+                        DrawSpotLight(
+                            data.basePos.x, data.basePos.y, data.basePos.z,
+                            data.forwardDir.x, data.forwardDir.y, data.forwardDir.z,
+                            r, g, b,
+                            distance,
+                            brightness,
+                            Config.LightDefaults.roundness or 1.0,
+                            width,
+                            Config.LightDefaults.falloff or 10.0
+                        )
+                    end
                 end
             end
         end
@@ -644,8 +803,8 @@ if Config.EnableNightTimeCommand then
     end, false)
 end
 
-RegisterNetEvent('cb-lighting:client:UseWorklight', function()
-    StartPlacement()
+RegisterNetEvent('cb-lighting:client:UseWorklight', function(itemName)
+    StartPlacement(nil, itemName or 'worklight')
 end)
 
 CreateThread(function()
@@ -680,6 +839,13 @@ CreateThread(function()
                     action = function()
                         OpenShopUI()
                     end
+                },
+                {
+                    label = 'Get Your Cut',
+                    icon = 'fas fa-money-bill-trend-up',
+                    action = function()
+                        TriggerServerEvent('cb-lighting:server:GetPhotographerCut')
+                    end
                 }
             },
             distance = 2.5
@@ -692,6 +858,13 @@ CreateThread(function()
                 onSelect = function()
                     OpenShopUI()
                 end
+            },
+            {
+                label = 'Get Your Cut',
+                icon = 'fas fa-money-bill-trend-up',
+                onSelect = function()
+                    TriggerServerEvent('cb-lighting:server:GetPhotographerCut')
+                end
             }
         })
     end
@@ -699,4 +872,10 @@ end)
 
 RegisterCommand(Config.Command, function()
     StartPlacement()
+end, false)
+
+RegisterCommand('clearblur', function()
+    AnimpostfxStopAll()
+    TriggerScreenblurFadeOut(0)
+    QBCore.Functions.Notify('Cleared all screen effects.', 'success')
 end, false)
