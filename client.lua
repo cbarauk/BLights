@@ -8,6 +8,27 @@ local currentPlacementDist = Config.PlacementDistance or 3.0
 local modelBottomOffset = 0.0
 local currentItemName = nil
 
+-- Daylight compensation: GTA's sun/exposure washes out DrawSpotLight in the day,
+-- so we scale intensity at render time only (stored brightness / UI / server are untouched).
+local DaylightMult = 1.0
+CreateThread(function()
+    while true do
+        local boost = Config.DaylightBoost or 1.0
+        if boost <= 1.0 then
+            DaylightMult = 1.0
+        else
+            local t = GetClockHours() + (GetClockMinutes() / 60.0)
+            local day
+            if t >= 8.0 and t <= 18.0 then day = 1.0
+            elseif t > 6.0 and t < 8.0 then day = (t - 6.0) / 2.0
+            elseif t > 18.0 and t < 20.0 then day = 1.0 - ((t - 18.0) / 2.0)
+            else day = 0.0 end
+            DaylightMult = 1.0 + (boost - 1.0) * day
+        end
+        Wait(500)
+    end
+end)
+
 local function GetMyCid()
     local pData = QBCore.Functions.GetPlayerData()
     return pData and pData.citizenid or nil
@@ -31,6 +52,54 @@ local function PlayLightAnim(animType)
         if timeout > 50 then return end
     end
     TaskPlayAnim(PlayerPedId(), dict, anim, 8.0, 8.0, 1000, 48, 0, false, false, false)
+end
+
+-- Controller tablet prop + animation
+local tabletProp = nil
+local tabletActive = false
+local tabletToken = 0
+local controllerOpen = false
+
+local function StartTablet()
+    local cfg = Config.ControllerTablet
+    if not cfg or not cfg.enabled or tabletActive then return end
+    tabletActive = true
+    tabletToken = tabletToken + 1
+    local myToken = tabletToken
+    local ped = PlayerPedId()
+
+    RequestAnimDict(cfg.animDict)
+    RequestModel(cfg.model)
+    local timeout = 0
+    while (not HasAnimDictLoaded(cfg.animDict) or not HasModelLoaded(cfg.model)) and timeout < 100 do
+        Wait(10)
+        timeout = timeout + 1
+    end
+    if not tabletActive or myToken ~= tabletToken then return end -- closed/reopened while loading
+
+    if HasModelLoaded(cfg.model) then
+        local coords = GetEntityCoords(ped)
+        tabletProp = CreateObject(cfg.model, coords.x, coords.y, coords.z + 0.2, true, true, false)
+        AttachEntityToEntity(tabletProp, ped, GetPedBoneIndex(ped, cfg.bone), cfg.pos.x, cfg.pos.y, cfg.pos.z, cfg.rot.x, cfg.rot.y, cfg.rot.z, true, true, false, true, 1, true)
+        SetModelAsNoLongerNeeded(cfg.model)
+    end
+    if HasAnimDictLoaded(cfg.animDict) then
+        TaskPlayAnim(ped, cfg.animDict, cfg.animName, 3.0, 3.0, -1, 49, 0, false, false, false)
+    end
+end
+
+local function StopTablet()
+    local cfg = Config.ControllerTablet
+    controllerOpen = false
+    tabletToken = tabletToken + 1
+    if not tabletActive then return end
+    tabletActive = false
+    if cfg then StopAnimTask(PlayerPedId(), cfg.animDict, cfg.animName, 3.0) end
+    if tabletProp and DoesEntityExist(tabletProp) then
+        DetachEntity(tabletProp, true, true)
+        DeleteEntity(tabletProp)
+    end
+    tabletProp = nil
 end
 
 local function ShowUI(title, controls)
@@ -114,6 +183,7 @@ end)
 
 AddEventHandler('onResourceStop', function(resource)
     if resource == GetCurrentResourceName() then
+        StopTablet()
         AnimpostfxStopAll()
     end
 end)
@@ -188,7 +258,7 @@ RegisterNetEvent('cb-lighting:client:PlayAnim', function(animType)
     PlayLightAnim(animType)
 end)
 
-function OpenControlMenu(netId)
+function OpenControlMenu(netId, fromController)
     local currentColor = PlacedLights[netId] and PlacedLights[netId].color or Config.DefaultColor
     local currentBrightness = PlacedLights[netId] and PlacedLights[netId].brightness or Config.LightDefaults.brightness
     local currentDistance = PlacedLights[netId] and PlacedLights[netId].distance or Config.LightDefaults.distance
@@ -211,7 +281,8 @@ function OpenControlMenu(netId)
         width = currentWidth,
         minBrightness = Config.MinBrightness or 0.5,
         maxBrightness = Config.MaxBrightness or 10.0,
-        netId = tonumber(netId)
+        netId = tonumber(netId),
+        fromController = fromController == true
     })
 end
 
@@ -257,6 +328,7 @@ end)
 
 RegisterNUICallback('saveControlPanel', function(data, cb)
     SetNuiFocus(false, false)
+    StopTablet()
     
     if data and data.netId then
         if data.r then
@@ -272,11 +344,13 @@ end)
 
 RegisterNUICallback('closeControlPanel', function(data, cb)
     SetNuiFocus(false, false)
+    StopTablet()
     cb('ok')
 end)
 
 RegisterNUICallback('syncAllLights', function(data, cb)
     SetNuiFocus(false, false)
+    StopTablet()
     
     SendNUIMessage({ action = 'hideControlPanel' })
     
@@ -294,8 +368,7 @@ function OpenShopUI()
     
     SendNUIMessage({
         action = 'openShop',
-        items = Config.ShopItems,
-        requireCode = Config.RequirePhotographerCode
+        items = Config.ShopItems
     })
 end
 
@@ -306,27 +379,6 @@ end)
 
 RegisterNUICallback('processPurchase', function(data, cb)
     TriggerServerEvent('cb-lighting:server:ProcessPurchase', data)
-    SetNuiFocus(false, false)
-    cb('ok')
-end)
-
-RegisterNetEvent('cb-lighting:client:OpenCutPanel', function(balance, log)
-    SetNuiFocus(true, true)
-    
-    SendNUIMessage({
-        action = 'openCutPanel',
-        balance = balance,
-        log = log
-    })
-end)
-
-RegisterNUICallback('closeCutPanel', function(data, cb)
-    SetNuiFocus(false, false)
-    cb('ok')
-end)
-
-RegisterNUICallback('collectCut', function(data, cb)
-    TriggerServerEvent('cb-lighting:server:CollectPhotographerCut')
     SetNuiFocus(false, false)
     cb('ok')
 end)
@@ -606,7 +658,7 @@ function StartPlacement(existingNetId, itemName)
                 b = math.floor(color.b or 255)
             end
 
-            local bVal = brightness + 0.0
+            local bVal = (brightness + 0.0) * DaylightMult
             local distVal = distance + 0.0
             local widthVal = width + 0.0
 
@@ -749,7 +801,7 @@ CreateThread(function()
                         b = math.floor(rgb.b or 255)
                     end
                     
-                    local brightness = (data.brightness or Config.LightDefaults.brightness) + 0.0
+                    local brightness = ((data.brightness or Config.LightDefaults.brightness) + 0.0) * DaylightMult
                     local distance = (data.distance or Config.LightDefaults.distance or 25.0) + 0.0
                     local width = (data.width or Config.LightDefaults.width or 25.0) + 0.0
                     local itemType = data.itemType or 'worklight'
@@ -814,24 +866,62 @@ CreateThread(function()
     if not LocalPlayer.state.isLoggedIn then
         TriggerServerEvent('cb-lighting:server:RequestSync')
     end
-    
+end)
+
+-- =============================================
+-- Shop NPC: ONE local (non-networked) ped per client, streamed by distance.
+-- It is never networked, so it can't be duplicated server-side, and the handle
+-- is tracked so it can only ever exist once on this client.
+-- =============================================
+local shopNpc = nil
+
+local function DeleteShopNpc()
+    if shopNpc and DoesEntityExist(shopNpc) then
+        if Config.Target == 'qb-target' then
+            pcall(function() exports['qb-target']:RemoveTargetEntity(shopNpc) end)
+        elseif Config.Target == 'ox_target' then
+            pcall(function() exports['ox_target']:removeLocalEntity(shopNpc) end)
+        end
+        DeleteEntity(shopNpc)
+    end
+    shopNpc = nil
+end
+
+local function SpawnShopNpc()
+    if shopNpc and DoesEntityExist(shopNpc) then return end -- already exists, never spawn a 2nd
+
     local npcModel = Config.ShopNpc.model
+    local c = Config.ShopNpc.coords
     RequestModel(npcModel)
     local timeout = 0
-    while not HasModelLoaded(npcModel) do 
-        Wait(10) 
+    while not HasModelLoaded(npcModel) do
+        Wait(10)
         timeout = timeout + 1
-        if timeout > 50 then return end
+        if timeout > 200 then return end
     end
-    
-    local npc = CreatePed(4, npcModel, Config.ShopNpc.coords.x, Config.ShopNpc.coords.y, Config.ShopNpc.coords.z - 1.0, Config.ShopNpc.coords.w, false, false)
-    SetEntityInvincible(npc, true)
-    SetBlockingOfNonTemporaryEvents(npc, true)
-    FreezeEntityPosition(npc, true)
+    if shopNpc and DoesEntityExist(shopNpc) then return end -- another spawn finished while loading
+
+    -- Clear any stray ped of this model already standing on the spot
+    local spot = vector3(c.x, c.y, c.z)
+    local handle, ped = FindFirstPed()
+    local ok = handle ~= -1
+    while ok do
+        if ped ~= PlayerPedId() and not IsPedAPlayer(ped) and GetEntityModel(ped) == npcModel
+            and #(GetEntityCoords(ped) - spot) < 2.0 then
+            DeleteEntity(ped)
+        end
+        ok, ped = FindNextPed(handle)
+    end
+    EndFindPed(handle)
+
+    shopNpc = CreatePed(4, npcModel, c.x, c.y, c.z - 1.0, c.w, false, false)
+    SetEntityInvincible(shopNpc, true)
+    SetBlockingOfNonTemporaryEvents(shopNpc, true)
+    FreezeEntityPosition(shopNpc, true)
     SetModelAsNoLongerNeeded(npcModel)
 
     if Config.Target == 'qb-target' then
-        exports['qb-target']:AddTargetEntity(npc, {
+        exports['qb-target']:AddTargetEntity(shopNpc, {
             options = {
                 {
                     label = 'Open Shop',
@@ -839,35 +929,107 @@ CreateThread(function()
                     action = function()
                         OpenShopUI()
                     end
-                },
-                {
-                    label = 'Get Your Cut',
-                    icon = 'fas fa-money-bill-trend-up',
-                    action = function()
-                        TriggerServerEvent('cb-lighting:server:GetPhotographerCut')
-                    end
                 }
             },
             distance = 2.5
         })
     elseif Config.Target == 'ox_target' then
-        exports['ox_target']:addLocalEntity(npc, {
+        exports['ox_target']:addLocalEntity(shopNpc, {
             {
                 label = 'Open Shop',
                 icon = 'fas fa-store',
                 onSelect = function()
                     OpenShopUI()
                 end
-            },
-            {
-                label = 'Get Your Cut',
-                icon = 'fas fa-money-bill-trend-up',
-                onSelect = function()
-                    TriggerServerEvent('cb-lighting:server:GetPhotographerCut')
-                end
             }
         })
     end
+end
+
+CreateThread(function()
+    local c = Config.ShopNpc.coords
+    local spot = vector3(c.x, c.y, c.z)
+    local spawnDist = Config.ShopNpc.spawnDistance or 60.0
+    while true do
+        local dist = #(GetEntityCoords(PlayerPedId()) - spot)
+        if dist <= spawnDist then
+            if not shopNpc or not DoesEntityExist(shopNpc) then SpawnShopNpc() end
+            Wait(1000)
+        else
+            if shopNpc then DeleteShopNpc() end
+            Wait(2000)
+        end
+    end
+end)
+
+AddEventHandler('onResourceStop', function(resource)
+    if resource == GetCurrentResourceName() then DeleteShopNpc() end
+end)
+
+-- Lighting Controller item: control your placed lights remotely (NUI list)
+local function OpenControllerList()
+    controllerOpen = true
+    local myPos = GetEntityCoords(PlayerPedId())
+    local range = Config.ControllerRange or 150.0
+    local owned = {}
+
+    for netId, data in pairs(PlacedLights) do
+        if data.isOwner then
+            local ent = GetSafeEntityFromNetId(netId)
+            if ent ~= 0 then
+                local dist = #(myPos - GetEntityCoords(ent))
+                if dist <= range then
+                    local c = type(data.color) == 'table' and data.color or Config.DefaultColor
+                    owned[#owned + 1] = {
+                        netId = netId,
+                        dist = dist,
+                        itemType = data.itemType or 'worklight',
+                        color = { r = math.floor(c.r or 255), g = math.floor(c.g or 255), b = math.floor(c.b or 255) }
+                    }
+                end
+            end
+        end
+    end
+
+    if #owned == 0 then
+        SetNuiFocus(false, false)
+        StopTablet()
+        QBCore.Functions.Notify('No lights of yours in range of the controller.', 'error')
+        return
+    end
+
+    table.sort(owned, function(a, b) return a.dist < b.dist end)
+
+    SetNuiFocus(true, true)
+    CreateThread(StartTablet)
+    SendNUIMessage({ action = 'openController', lights = owned })
+end
+
+RegisterNetEvent('cb-lighting:client:UseController', function()
+    if controllerOpen then return end -- ignore rapid re-use while already open
+    OpenControllerList()
+end)
+
+RegisterNUICallback('controllerSelect', function(data, cb)
+    local netId = tonumber(data and data.netId)
+    if netId and PlacedLights[netId] and PlacedLights[netId].isOwner then
+        OpenControlMenu(netId, true) -- NUI focus stays on, opens the control panel
+    else
+        SetNuiFocus(false, false)
+        StopTablet()
+    end
+    cb('ok')
+end)
+
+RegisterNUICallback('controllerBack', function(data, cb)
+    OpenControllerList()
+    cb('ok')
+end)
+
+RegisterNUICallback('closeController', function(data, cb)
+    SetNuiFocus(false, false)
+    StopTablet()
+    cb('ok')
 end)
 
 RegisterCommand(Config.Command, function()

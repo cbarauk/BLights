@@ -2,93 +2,6 @@ local QBCore = exports['qb-core']:GetCoreObject()
 local PlacedLights = {}
 local OwnersLights = {}
 
-local PhotographerData = {}
-local ActivePhotographers = {}
-
-local resourceName = GetCurrentResourceName()
-local saveFile = "photographers.json"
-
-local function LoadPhotographerData()
-    local file = LoadResourceFile(resourceName, saveFile)
-    if file then
-        local data = json.decode(file)
-        if data then
-            ActivePhotographers = data.codes or {}
-            PhotographerData = data.cutData or {}
-            print("[cb-lighting] Loaded photographer codes and cut data.")
-            return
-        end
-    end
-    ActivePhotographers = {}
-    PhotographerData = {}
-    for code, cid in pairs(Config.Photographers or {}) do
-        ActivePhotographers[code] = cid
-    end
-end
-
-local function SavePhotographerData()
-    local data = {
-        codes = ActivePhotographers,
-        cutData = PhotographerData
-    }
-    SaveResourceFile(resourceName, saveFile, json.encode(data, {indent = true}), -1)
-end
-
-CreateThread(function()
-    LoadPhotographerData()
-end)
-
-QBCore.Commands.Add("addphotographer", "Add a permanent photographer code (Admin Only)", {{name="playerId", help="Player Server ID"}, {name="code", help="Unique Code"}}, true, function(source, args)
-    local targetSrc = tonumber(args[1])
-    local code = string.upper(args[2])
-    
-    if not targetSrc or not code then
-        TriggerClientEvent('QBCore:Notify', source, "Usage: /addphotographer [playerId] [code]", "error")
-        return
-    end
-
-    local Target = QBCore.Functions.GetPlayer(targetSrc)
-    if not Target then
-        TriggerClientEvent('QBCore:Notify', source, "Player not online or invalid ID.", "error")
-        return
-    end
-
-    local targetCid = Target.PlayerData.citizenid
-    
-    if ActivePhotographers[code] then
-        TriggerClientEvent('QBCore:Notify', source, "This code is already in use!", "error")
-        return
-    end
-
-    for c, cid in pairs(ActivePhotographers) do
-        if cid == targetCid then
-            ActivePhotographers[c] = nil
-        end
-    end
-
-    ActivePhotographers[code] = targetCid
-    SavePhotographerData()
-    
-    TriggerClientEvent('QBCore:Notify', source, "Photographer added successfully! Code: "..code, "success")
-    TriggerClientEvent('QBCore:Notify', targetSrc, "You are now a photographer! Your shop code is: "..code, "success")
-end, "admin")
-
-QBCore.Commands.Add("removephotographer", "Remove a photographer code (Admin Only)", {{name="code", help="Code to remove"}}, true, function(source, args)
-    local code = string.upper(args[1])
-    if not code then
-        TriggerClientEvent('QBCore:Notify', source, "Usage: /removephotographer [code]", "error")
-        return
-    end
-
-    if ActivePhotographers[code] then
-        ActivePhotographers[code] = nil
-        SavePhotographerData()
-        TriggerClientEvent('QBCore:Notify', source, "Photographer code "..code.." removed.", "success")
-    else
-        TriggerClientEvent('QBCore:Notify', source, "Code not found.", "error")
-    end
-end, "admin")
-
 QBCore.Commands.Add("clearlights", "Clear all placed studio lights (Admin Only)", {}, true, function(source, args)
     local count = 0
     for netId, _ in pairs(PlacedLights) do
@@ -312,7 +225,6 @@ RegisterNetEvent('cb-lighting:server:ProcessPurchase', function(data)
 
     local cart = data.cart
     local paymentType = data.paymentType
-    local photographerCode = data.photographerCode
 
     if not cart or type(cart) ~= "table" then return end
 
@@ -335,24 +247,6 @@ RegisterNetEvent('cb-lighting:server:ProcessPurchase', function(data)
         return
     end
 
-    local buyerName = Player.PlayerData.name
-    local photCid = nil
-
-    if Config.RequirePhotographerCode then
-        if not photographerCode then
-            TriggerClientEvent('QBCore:Notify', src, "You must enter a photographer code!", "error")
-            return
-        end
-
-        local enteredCode = string.upper(photographerCode)
-        photCid = ActivePhotographers[enteredCode]
-
-        if not photCid then
-            TriggerClientEvent('QBCore:Notify', src, "Invalid photographer code!", "error")
-            return
-        end
-    end
-
     paymentType = (paymentType == 'cash' or paymentType == 'bank') and paymentType or 'cash'
     local balance = Player.Functions.GetMoney(paymentType)
 
@@ -364,60 +258,9 @@ RegisterNetEvent('cb-lighting:server:ProcessPurchase', function(data)
             TriggerClientEvent('inventory:client:ItemBox', src, QBCore.Shared.Items[item], "add")
         end
         
-        if photCid and Config.PhotographerCut > 0 then
-            local cutAmount = math.floor(totalPrice * Config.PhotographerCut)
-            
-            if not PhotographerData[photCid] then
-                PhotographerData[photCid] = { balance = 0, log = {} }
-            end
-            
-            PhotographerData[photCid].balance = PhotographerData[photCid].balance + cutAmount
-            
-            table.insert(PhotographerData[photCid].log, 1, {
-                buyer = buyerName,
-                total = totalPrice,
-                cut = cutAmount
-            })
-            if #PhotographerData[photCid].log > 20 then
-                table.remove(PhotographerData[photCid].log, #PhotographerData[photCid].log)
-            end
-
-            SavePhotographerData()
-        end
-
         TriggerClientEvent('QBCore:Notify', src, 'Purchase successful! ($'..totalPrice..')', 'success')
     else
         TriggerClientEvent('QBCore:Notify', src, 'You do not have enough funds! ($'..totalPrice..')', 'error')
-    end
-end)
-
-RegisterNetEvent('cb-lighting:server:GetPhotographerCut', function()
-    local src = source
-    local Player = QBCore.Functions.GetPlayer(src)
-    if not Player then return end
-    local photCid = Player.PlayerData.citizenid
-
-    local data = PhotographerData[photCid] or { balance = 0, log = {} }
-    
-    TriggerClientEvent('cb-lighting:client:OpenCutPanel', src, data.balance, data.log)
-end)
-
-RegisterNetEvent('cb-lighting:server:CollectPhotographerCut', function()
-    local src = source
-    local Player = QBCore.Functions.GetPlayer(src)
-    if not Player then return end
-    local photCid = Player.PlayerData.citizenid
-
-    if PhotographerData[photCid] and PhotographerData[photCid].balance > 0 then
-        local amount = PhotographerData[photCid].balance
-        Player.Functions.AddMoney('cash', amount)
-        TriggerClientEvent('QBCore:Notify', src, 'You collected $'..amount..' from your sales cut!', 'success')
-        
-        PhotographerData[photCid].balance = 0
-        
-        SavePhotographerData()
-    else
-        TriggerClientEvent('QBCore:Notify', src, 'You have no balance to collect.', 'error')
     end
 end)
 
@@ -427,6 +270,10 @@ for itemName, _ in pairs(Config.ItemModels) do
         TriggerClientEvent('cb-lighting:client:UseWorklight', src, itemName)
     end)
 end
+
+QBCore.Functions.CreateUseableItem(Config.ControllerItem or 'lightcontrol', function(source, item)
+    TriggerClientEvent('cb-lighting:client:UseController', source)
+end)
 
 CreateThread(function()
     while true do
@@ -457,7 +304,6 @@ end)
 AddEventHandler('onResourceStop', function(resource)
     if resource ~= GetCurrentResourceName() then return end
     
-    SavePhotographerData()
     
     for netId, _ in pairs(PlacedLights) do
         local entity = NetworkGetEntityFromNetworkId(netId)

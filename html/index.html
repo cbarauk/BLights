@@ -23,15 +23,21 @@
                 <span class="gta-action" id="cp-close-action">Close</span>
             </div>
             <div class="cp-body">
-                <div class="cp-wheel-container">
-                    <canvas id="color-wheel" width="140" height="140"></canvas>
-                    <div id="wheel-cursor"></div>
+                <div class="cp-picker-col">
+                    <div class="cp-sv-container">
+                        <canvas id="sv-canvas" width="160" height="160"></canvas>
+                        <div id="sv-cursor"></div>
+                    </div>
+                    <div class="cp-hue-container">
+                        <canvas id="hue-canvas" width="160" height="14"></canvas>
+                        <div id="hue-cursor"></div>
+                    </div>
                 </div>
                 <div class="cp-sliders">
                     <div class="cp-slider-block">
                         <div class="cp-slider-label">
                             <span>Brightness</span>
-                            <span id="brightness-value">8.0</span>
+                            <input type="text" class="cp-value-input" id="brightness-value" value="8.0" spellcheck="false" autocomplete="off">
                         </div>
                         <div class="cp-slider-track" id="brightness-slider">
                             <div class="cp-slider-fill" id="brightness-fill"></div>
@@ -41,7 +47,7 @@
                     <div class="cp-slider-block">
                         <div class="cp-slider-label">
                             <span>Distance</span>
-                            <span id="distance-value">25.0</span>
+                            <input type="text" class="cp-value-input" id="distance-value" value="25.0" spellcheck="false" autocomplete="off">
                         </div>
                         <div class="cp-slider-track" id="distance-slider">
                             <div class="cp-slider-fill" id="distance-fill"></div>
@@ -51,37 +57,51 @@
                     <div class="cp-slider-block">
                         <div class="cp-slider-label">
                             <span>Width</span>
-                            <span id="width-value">25.0</span>
+                            <input type="text" class="cp-value-input" id="width-value" value="25.0" spellcheck="false" autocomplete="off">
                         </div>
                         <div class="cp-slider-track" id="width-slider">
                             <div class="cp-slider-fill" id="width-fill"></div>
                             <div class="cp-slider-handle" id="width-handle"></div>
                         </div>
                     </div>
-                    <div class="cp-slider-block">
-                        <div class="cp-slider-label">
-                            <span>B / V Slider</span>
-                            <span id="cp-hex-value">#FFFFFF</span>
-                        </div>
-                        <div class="cp-slider-track" id="bv-slider">
-                            <div class="cp-slider-fill" id="bv-fill"></div>
-                            <div class="cp-slider-handle" id="bv-handle"></div>
-                        </div>
-                    </div>
                 </div>
+            </div>
+            <div class="cp-presets">
+                <div class="cp-presets-label">Presets</div>
+                <div class="cp-presets-row" id="cp-presets-row"></div>
+
+                <div class="cp-presets-head">
+                    <div class="cp-presets-label">My Presets</div>
+                    <button class="cp-save-preset-btn" id="cp-save-preset">+ Save Current</button>
+                </div>
+                <div class="cp-presets-row" id="cp-saved-row"></div>
             </div>
             <div class="cp-preview">
                 <div id="cp-current-color"></div>
                 <span>Preview Output</span>
+                <input type="text" id="cp-hex-input" maxlength="7" value="#FFFFFF" spellcheck="false" autocomplete="off">
             </div>
             <div class="cp-footer">
+                <button class="gta-btn-ghost" id="cp-back" style="display: none;">Back</button>
+                <button class="gta-btn-ghost" id="cp-reset">Reset</button>
                 <button class="gta-btn-ghost" id="cp-sync">Sync All</button>
                 <button class="gta-btn-ghost" id="cp-cancel">Cancel</button>
                 <button class="gta-btn" id="cp-confirm">Save</button>
             </div>
         </div>
 
-        <!-- 3. Shop & Cut UI (GTA V Style) -->
+        <!-- 2b. Lighting Controller List (GTA V Style) -->
+        <div id="controller-ui" style="display: none;">
+            <div id="controller-view" class="shop-card gta-ui-card">
+                <div class="shop-header">
+                    <div class="gta-title">LIGHTING CONTROLLER</div>
+                    <span class="gta-action" id="controller-close-action">Close</span>
+                </div>
+                <div class="shop-items-container" id="controller-list"></div>
+            </div>
+        </div>
+
+        <!-- 3. Shop UI (GTA V Style) -->
         <div id="shop-ui" style="display: none;">
             <!-- Shop View -->
             <div id="shop-view" class="shop-card gta-ui-card">
@@ -90,11 +110,6 @@
                     <span class="gta-action" id="shop-close-action">Close</span>
                 </div>
                 
-                <!-- Photographer Code Input -->
-                <div id="photographer-code-section" style="display: none; padding: 15px 20px; border-bottom: 1px solid rgba(255,255,255,0.1);">
-                    <input type="text" id="photographer-code-input" placeholder="Enter Photographer's Code" style="width: 100%; padding: 8px; background: rgba(0,0,0,0.5); border: 1px solid #F86F1A; color: #fff; border-radius: 4px; box-sizing: border-box; font-size: 12px; text-transform: uppercase;">
-                </div>
-
                 <div class="shop-items-container">
                     <div class="shop-item">
                         <div class="shop-item-icon">
@@ -112,9 +127,25 @@
                         </div>
                     </div>
 
+                    <div class="shop-item">
+                        <div class="shop-item-icon">
+                            <img src="nui://qb-inventory/html/images/light_tablet.png" alt="Lighting Controller">
+                        </div>
+                        <div class="shop-item-details">
+                            <div class="item-info">
+                                <h3>Lighting Controller</h3>
+                                <p>Tablet to control all your placed lights remotely.</p>
+                            </div>
+                        </div>
+                        <div class="shop-item-actions">
+                            <div class="item-price">$<span id="price-lightcontrol">1000</span></div>
+                            <button class="add-cart-btn" data-item="lightcontrol" data-name="Lighting Controller" data-price="1000">Add to Cart</button>
+                        </div>
+                    </div>
+
                     <div class="shop-item coming-soon">
                         <div class="shop-item-icon">
-                            <img src="nui://qb-inventory/html/images/tubeworklight.png" alt="Tube Work Light">
+                            <img src="nui://qb-inventory/html/images/tubeworklight.png" alt="Omni Tube Light">
                         </div>
                         <div class="shop-item-details">
                             <div class="item-info">
@@ -150,23 +181,6 @@
                         <button class="gta-btn-ghost" id="shop-cash-btn">Cash</button>
                         <button class="gta-btn" id="shop-card-btn">Card</button>
                     </div>
-                </div>
-            </div>
-
-            <!-- Photographer Cut View -->
-            <div id="cut-view" class="shop-card gta-ui-card" style="display: none;">
-                <div class="shop-header">
-                    <div class="gta-title">YOUR CUT</div>
-                    <span class="gta-action" id="cut-close-action">Close</span>
-                </div>
-                <div class="shop-items-container">
-                    <div class="cut-summary">
-                        <div class="shop-price">Available Balance: <span id="cut-balance-val">$0</span></div>
-                    </div>
-                    <div id="cut-log-container"></div>
-                </div>
-                <div class="shop-footer">
-                    <button class="gta-btn" id="collect-cut-btn">Collect Cut</button>
                 </div>
             </div>
         </div>

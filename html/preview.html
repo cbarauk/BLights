@@ -317,6 +317,48 @@
         }
 
         /* =============================================
+           2b. Lighting Controller list
+           ============================================= */
+        #controller-ui {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            pointer-events: all;
+            background: rgba(0,0,0,0.6);
+            backdrop-filter: blur(2px);
+        }
+        #controller-view { height: auto; max-height: 70vh; }
+        .controller-item {
+            padding: 12px 20px;
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            cursor: pointer;
+            transition: background 0.15s ease;
+        }
+        .controller-item:hover { background: rgba(248,111,26,0.15); }
+        .controller-item .item-info { flex-grow: 1; }
+        .controller-swatch {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            border: 1px solid rgba(255,255,255,0.4);
+            flex-shrink: 0;
+        }
+        .controller-dist {
+            color: rgba(255,255,255,0.6);
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+        /* =============================================
            3. Shop UI (GTA V Style)
            ============================================= */
         #shop-ui {
@@ -429,12 +471,53 @@
             font-size: 16px;
             margin-left: 5px;
         }
+
+
+/* =============================================
+   Smooth staggered reveal for inner UI parts
+   ============================================= */
+@keyframes partIn {
+    0% { opacity: 0; transform: translateY(10px); }
+    100% { opacity: 1; transform: translateY(0); }
+}
+
+/* Control panel sections cascade in */
+#control-panel-ui > * { animation: partIn 0.45s cubic-bezier(0.16, 1, 0.3, 1) both; }
+#control-panel-ui > :nth-child(1) { animation-delay: 0.05s; }
+#control-panel-ui > :nth-child(2) { animation-delay: 0.12s; }
+#control-panel-ui > :nth-child(3) { animation-delay: 0.19s; }
+#control-panel-ui > :nth-child(4) { animation-delay: 0.26s; }
+#control-panel-ui > :nth-child(5) { animation-delay: 0.33s; }
+
+/* Shop / cut / controller headers, rows and footers */
+.shop-header { animation: partIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) 0.05s both; }
+.shop-footer { animation: partIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) 0.3s both; }
+@keyframes rowIn {
+    0% { opacity: 0; transform: scale(0.97); }
+    100% { opacity: 1; transform: scale(1); }
+}
+.shop-item, .cart-item, .cut-summary, .cut-log-item, .controller-item, .cart-empty {
+    transform-origin: left center;
+    animation: rowIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+    animation-delay: calc(var(--i, 0) * 55ms + 120ms);
+}
+.shop-item:nth-child(1), .cart-item:nth-child(1), .cut-log-item:nth-child(1) { --i: 0; }
+.shop-item:nth-child(2), .cart-item:nth-child(2), .cut-log-item:nth-child(2) { --i: 1; }
+.shop-item:nth-child(3), .cart-item:nth-child(3), .cut-log-item:nth-child(3) { --i: 2; }
+.shop-item:nth-child(4), .cart-item:nth-child(4), .cut-log-item:nth-child(4) { --i: 3; }
+.shop-item:nth-child(n+5), .cart-item:nth-child(n+5), .cut-log-item:nth-child(n+5) { --i: 4; }
+
+@media (prefers-reduced-motion: reduce) {
+    #control-panel-ui > *, .shop-header, .shop-footer, .shop-item, .cart-item,
+    .cut-summary, .cut-log-item, .controller-item, .cart-empty { animation: none; }
+}
     </style>
 </head>
 <body>
     <div id="dev-menu">
         <button onclick="mockShowPlacement()">Show Placement</button>
         <button onclick="mockOpenControl()">Open Color Panel</button>
+        <button onclick="mockOpenController()">Open Light Controller</button>
         <button onclick="mockOpenShop()">Open Shop</button>
         <button onclick="closeAll()">Close All</button>
     </div>
@@ -528,9 +611,46 @@
                 </div>
             </div>
             <div class="cp-footer">
+                <button class="gta-btn-ghost" onclick="mockOpenController()">Back</button>
                 <button class="gta-btn-ghost">Sync All</button>
                 <button class="gta-btn-ghost">Cancel</button>
                 <button class="gta-btn">Save</button>
+            </div>
+        </div>
+
+        <!-- 2b. Lighting Controller List -->
+        <div id="controller-ui">
+            <div id="controller-view" class="shop-card gta-ui-card">
+                <div class="shop-header">
+                    <div class="gta-title">LIGHTING CONTROLLER</div>
+                    <span class="gta-action" onclick="mockCloseController()">Close</span>
+                </div>
+                <div class="shop-items-container">
+                    <div class="controller-item" onclick="mockPickLight()">
+                        <div class="shop-item-icon"><i class="fa-solid fa-lightbulb"></i></div>
+                        <div class="item-info">
+                            <h3>Studio Light #1</h3>
+                            <p class="controller-dist">6m away</p>
+                        </div>
+                        <div class="controller-swatch" style="background: rgb(255,255,255)"></div>
+                    </div>
+                    <div class="controller-item" onclick="mockPickLight()">
+                        <div class="shop-item-icon"><i class="fa-solid fa-lightbulb"></i></div>
+                        <div class="item-info">
+                            <h3>Studio Light #2</h3>
+                            <p class="controller-dist">14m away</p>
+                        </div>
+                        <div class="controller-swatch" style="background: rgb(255,60,120)"></div>
+                    </div>
+                    <div class="controller-item" onclick="mockPickLight()">
+                        <div class="shop-item-icon"><i class="fa-solid fa-circle-notch"></i></div>
+                        <div class="item-info">
+                            <h3>Omni Tube Light #3</h3>
+                            <p class="controller-dist">32m away</p>
+                        </div>
+                        <div class="controller-swatch" style="background: rgb(60,160,255)"></div>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -554,6 +674,22 @@
                         </div>
                         <div class="shop-item-actions">
                             <div class="item-price">$500</div>
+                            <button class="gta-btn-ghost">Add to Cart</button>
+                        </div>
+                    </div>
+
+                    <div class="shop-item">
+                        <div class="shop-item-icon">
+                            <i class="fa-solid fa-tablet-screen-button"></i>
+                        </div>
+                        <div class="shop-item-details">
+                            <div class="item-info">
+                                <h3>Lighting Controller</h3>
+                                <p>Tablet to control all your placed lights remotely.</p>
+                            </div>
+                        </div>
+                        <div class="shop-item-actions">
+                            <div class="item-price">$1000</div>
                             <button class="gta-btn-ghost">Add to Cart</button>
                         </div>
                     </div>
@@ -588,10 +724,14 @@
             document.getElementById('placement-ui').style.display = 'none';
             document.getElementById('control-panel-ui').style.display = 'none';
             document.getElementById('shop-ui').style.display = 'none';
+            document.getElementById('controller-ui').style.display = 'none';
         }
         function mockShowPlacement() { closeAll(); document.getElementById('placement-ui').style.display = 'flex'; }
         function mockOpenControl() { closeAll(); document.getElementById('control-panel-ui').style.display = 'block'; drawColorWheel(); }
         function mockCloseControl() { document.getElementById('control-panel-ui').style.display = 'none'; }
+        function mockOpenController() { closeAll(); document.getElementById('controller-ui').style.display = 'flex'; }
+        function mockCloseController() { document.getElementById('controller-ui').style.display = 'none'; }
+        function mockPickLight() { mockCloseController(); mockOpenControl(); }
         function mockOpenShop() { closeAll(); document.getElementById('shop-ui').style.display = 'flex'; }
         function mockCloseShop() { document.getElementById('shop-ui').style.display = 'none'; }
 
