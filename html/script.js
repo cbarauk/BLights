@@ -498,7 +498,7 @@ drawHueStrip();
 // Saved presets (colour + brightness + distance + width)
 // Stored in the NUI's localStorage, so they persist between sessions.
 // =============================================
-const SAVED_KEY = 'cb-lighting:savedPresets';
+const SAVED_KEY = 'blights:savedPresets';
 const MAX_SAVED = 12;
 let savedPresets = [];
 

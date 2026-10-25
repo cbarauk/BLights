@@ -2,33 +2,20 @@ local QBCore = exports['qb-core']:GetCoreObject()
 local PlacedLights = {}
 local OwnersLights = {}
 
-QBCore.Commands.Add("clearlights", "Clear all placed studio lights (Admin Only)", {}, true, function(source, args)
-    local count = 0
-    for netId, _ in pairs(PlacedLights) do
-        local entity = NetworkGetEntityFromNetworkId(netId)
-        if DoesEntityExist(entity) then
-            DeleteEntity(entity)
-        end
-        count = count + 1
-    end
-    
-    PlacedLights = {}
-    OwnersLights = {}
-    
-    TriggerClientEvent('cb-lighting:client:SyncLights', -1, PlacedLights)
-    TriggerClientEvent('QBCore:Notify', source, "Cleared "..count.." studio lights from the server.", "success")
-end, "admin")
+QBCore.Commands.Add('lighttablet', 'Open your Lighting Controller tablet', {}, false, function(source, args)
+    TriggerClientEvent('blights:client:UseController', source)
+end)
 
-RegisterNetEvent('cb-lighting:server:RequestSync', function()
+RegisterNetEvent('blights:server:RequestSync', function()
     local src = source
-    TriggerClientEvent('cb-lighting:client:SyncLights', src, PlacedLights)
+    TriggerClientEvent('blights:client:SyncLights', src, PlacedLights)
 end)
 
-RegisterNetEvent('cb-lighting:server:SyncAllLights', function()
-    TriggerClientEvent('cb-lighting:client:SyncLights', -1, PlacedLights)
+RegisterNetEvent('blights:server:SyncAllLights', function()
+    TriggerClientEvent('blights:client:SyncLights', -1, PlacedLights)
 end)
 
-RegisterNetEvent('cb-lighting:server:SyncAllColors', function(color, brightness)
+RegisterNetEvent('blights:server:SyncAllColors', function(color, brightness)
     local src = source
     local Player = QBCore.Functions.GetPlayer(src)
     if not Player then return end
@@ -56,7 +43,7 @@ RegisterNetEvent('cb-lighting:server:SyncAllColors', function(color, brightness)
     end
 end)
 
-RegisterNetEvent('cb-lighting:server:PlaceLight', function(coords, rot, color, enabled, oldNetId, brightness, distance, width, itemName)
+RegisterNetEvent('blights:server:PlaceLight', function(coords, rot, color, enabled, oldNetId, brightness, distance, width, itemName)
     local src = source
     local Player = QBCore.Functions.GetPlayer(src)
     if not Player then return end
@@ -80,7 +67,7 @@ RegisterNetEvent('cb-lighting:server:PlaceLight', function(coords, rot, color, e
                 end
             end
         end
-        TriggerClientEvent('cb-lighting:client:RemoveLight', -1, oldNetId)
+        TriggerClientEvent('blights:client:RemoveLight', -1, oldNetId)
     else
         local item = Player.Functions.GetItemByName(itemName)
         if not item or item.amount < 1 then
@@ -124,10 +111,10 @@ RegisterNetEvent('cb-lighting:server:PlaceLight', function(coords, rot, color, e
     local state = Entity(obj).state
     state:set('lightData', PlacedLights[netId], true)
 
-    TriggerClientEvent('cb-lighting:client:SpawnLight', -1, netId, PlacedLights[netId].color, PlacedLights[netId].enabled, PlacedLights[netId].brightness, PlacedLights[netId].distance, PlacedLights[netId].width, ownerCitizenId, rot, itemName)
+    TriggerClientEvent('blights:client:SpawnLight', -1, netId, PlacedLights[netId].color, PlacedLights[netId].enabled, PlacedLights[netId].brightness, PlacedLights[netId].distance, PlacedLights[netId].width, ownerCitizenId, rot, itemName)
 end)
 
-RegisterNetEvent('cb-lighting:server:UpdateRotation', function(netId, rot)
+RegisterNetEvent('blights:server:UpdateRotation', function(netId, rot)
     local src = source
     local Player = QBCore.Functions.GetPlayer(src)
     if not Player then return end
@@ -144,7 +131,7 @@ RegisterNetEvent('cb-lighting:server:UpdateRotation', function(netId, rot)
     end
 end)
 
-RegisterNetEvent('cb-lighting:server:SaveLightSettings', function(netId, color, brightness, distance, width)
+RegisterNetEvent('blights:server:SaveLightSettings', function(netId, color, brightness, distance, width)
     local src = source
     local Player = QBCore.Functions.GetPlayer(src)
     if not Player then return end
@@ -182,7 +169,7 @@ RegisterNetEvent('cb-lighting:server:SaveLightSettings', function(netId, color, 
     end
 end)
 
-RegisterNetEvent('cb-lighting:server:PickUp', function(netId)
+RegisterNetEvent('blights:server:PickUp', function(netId)
     local src = source
     local Player = QBCore.Functions.GetPlayer(src)
     if not Player then return end
@@ -207,8 +194,8 @@ RegisterNetEvent('cb-lighting:server:PickUp', function(netId)
             end
         end
 
-        TriggerClientEvent('cb-lighting:client:RemoveLight', -1, netId)
-        TriggerClientEvent('cb-lighting:client:PlayAnim', src, 'pickup')
+        TriggerClientEvent('blights:client:RemoveLight', -1, netId)
+        TriggerClientEvent('blights:client:PlayAnim', src, 'pickup')
         
         Wait(500) 
         Player.Functions.AddItem(itemType, 1)
@@ -218,7 +205,7 @@ RegisterNetEvent('cb-lighting:server:PickUp', function(netId)
     end
 end)
 
-RegisterNetEvent('cb-lighting:server:ProcessPurchase', function(data)
+RegisterNetEvent('blights:server:ProcessPurchase', function(data)
     local src = source
     local Player = QBCore.Functions.GetPlayer(src)
     if not Player then return end
@@ -267,12 +254,12 @@ end)
 for itemName, _ in pairs(Config.ItemModels) do
     QBCore.Functions.CreateUseableItem(itemName, function(source, item)
         local src = source
-        TriggerClientEvent('cb-lighting:client:UseWorklight', src, itemName)
+        TriggerClientEvent('blights:client:UseWorklight', src, itemName)
     end)
 end
 
 QBCore.Functions.CreateUseableItem(Config.ControllerItem or 'lightcontrol', function(source, item)
-    TriggerClientEvent('cb-lighting:client:UseController', source)
+    TriggerClientEvent('blights:client:UseController', source)
 end)
 
 CreateThread(function()
@@ -295,7 +282,7 @@ CreateThread(function()
                         end
                     end
                 end
-                TriggerClientEvent('cb-lighting:client:RemoveLight', -1, netId)
+                TriggerClientEvent('blights:client:RemoveLight', -1, netId)
             end
         end
     end

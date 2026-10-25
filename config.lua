@@ -14,7 +14,6 @@ Config.ControllerTablet = {
     animDict = 'amb@code_human_in_bus_passenger_idles@female@tablet@base',
     animName = 'base'
 }
-Config.Command = 'placelight' 
 Config.Debug = false
 Config.PlacementDistance = 3.0
 Config.InteractionDistance = 1.5
@@ -52,7 +51,6 @@ Config.LightDefaults = {
 }
 
 Config.Timeout = 1800
-Config.EnableNightTimeCommand = true 
 
 Config.ShopNpc = {
     model = `CSB_Celeb_01`,
@@ -74,7 +72,6 @@ Config.ItemModels = {
 }
 
 -- =============================================
--- ADMIN COMMANDS
+-- COMMANDS
 -- =============================================
--- /clearlights                     : Instantly deletes all placed studio lights on the server.
--- /clearblur                       : Fixes your screen if the blur effect gets stuck.
+-- /lighttablet : Opens your Lighting Controller tablet (no item needed; the lightcontrol item also opens it).

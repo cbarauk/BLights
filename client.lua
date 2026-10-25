@@ -189,10 +189,10 @@ AddEventHandler('onResourceStop', function(resource)
 end)
 
 RegisterNetEvent('QBCore:Client:OnPlayerLoaded', function()
-    TriggerServerEvent('cb-lighting:server:RequestSync')
+    TriggerServerEvent('blights:server:RequestSync')
 end)
 
-RegisterNetEvent('cb-lighting:client:SyncLights', function(lights)
+RegisterNetEvent('blights:client:SyncLights', function(lights)
     PlacedLights = lights
     local myCid = GetMyCid()
     Wait(500)
@@ -202,7 +202,7 @@ RegisterNetEvent('cb-lighting:client:SyncLights', function(lights)
     end
 end)
 
-RegisterNetEvent('cb-lighting:client:SpawnLight', function(netId, color, enabled, brightness, distance, width, owner, rot, itemType)
+RegisterNetEvent('blights:client:SpawnLight', function(netId, color, enabled, brightness, distance, width, owner, rot, itemType)
     local myCid = GetMyCid()
     PlacedLights[netId] = { 
         color = color, 
@@ -250,11 +250,11 @@ RegisterNetEvent('cb-lighting:client:SpawnLight', function(netId, color, enabled
     end)
 end)
 
-RegisterNetEvent('cb-lighting:client:RemoveLight', function(netId)
+RegisterNetEvent('blights:client:RemoveLight', function(netId)
     PlacedLights[netId] = nil
 end)
 
-RegisterNetEvent('cb-lighting:client:PlayAnim', function(animType)
+RegisterNetEvent('blights:client:PlayAnim', function(animType)
     PlayLightAnim(animType)
 end)
 
@@ -332,7 +332,7 @@ RegisterNUICallback('saveControlPanel', function(data, cb)
     
     if data and data.netId then
         if data.r then
-            TriggerServerEvent('cb-lighting:server:SaveLightSettings', tonumber(data.netId), {
+            TriggerServerEvent('blights:server:SaveLightSettings', tonumber(data.netId), {
                 r = math.floor(data.r), 
                 g = math.floor(data.g), 
                 b = math.floor(data.b)
@@ -357,7 +357,7 @@ RegisterNUICallback('syncAllLights', function(data, cb)
     if data.r then
         local color = {r = math.floor(data.r), g = math.floor(data.g), b = math.floor(data.b)}
         local brightness = tonumber(data.brightness) or Config.LightDefaults.brightness
-        TriggerServerEvent('cb-lighting:server:SyncAllColors', color, brightness)
+        TriggerServerEvent('blights:server:SyncAllColors', color, brightness)
         QBCore.Functions.Notify('Applying color to all studio lights globally...', 'primary')
     end
     cb('ok')
@@ -378,7 +378,7 @@ RegisterNUICallback('closeShop', function(data, cb)
 end)
 
 RegisterNUICallback('processPurchase', function(data, cb)
-    TriggerServerEvent('cb-lighting:server:ProcessPurchase', data)
+    TriggerServerEvent('blights:server:ProcessPurchase', data)
     SetNuiFocus(false, false)
     cb('ok')
 end)
@@ -439,7 +439,7 @@ local function SetupTarget()
                         label = 'Pick Up',
                         icon = 'fas fa-hand-paper',
                         action = function(entity)
-                            TriggerServerEvent('cb-lighting:server:PickUp', NetworkGetNetworkIdFromEntity(entity))
+                            TriggerServerEvent('blights:server:PickUp', NetworkGetNetworkIdFromEntity(entity))
                         end,
                         canInteract = function(entity)
                             local netId = NetworkGetNetworkIdFromEntity(entity)
@@ -494,7 +494,7 @@ local function SetupTarget()
                 icon = 'fas fa-hand-paper',
                 distance = Config.InteractionDistance,
                 onSelect = function(data)
-                    TriggerServerEvent('cb-lighting:server:PickUp', NetworkGetNetworkIdFromEntity(data.entity))
+                    TriggerServerEvent('blights:server:PickUp', NetworkGetNetworkIdFromEntity(data.entity))
                 end,
                 canInteract = function(entity, distance, _)
                     local netId = NetworkGetNetworkIdFromEntity(entity)
@@ -677,7 +677,7 @@ function StartPlacement(existingNetId, itemName)
                 local finalRot = GetEntityRotation(currentPreview, 2)
                 
                 PlayLightAnim('place')
-                TriggerServerEvent('cb-lighting:server:PlaceLight', finalCoords, finalRot, color, enabled, targetNetId, brightness, distance, width, currentItemName)
+                TriggerServerEvent('blights:server:PlaceLight', finalCoords, finalRot, color, enabled, targetNetId, brightness, distance, width, currentItemName)
             end
             Wait(0)
         end
@@ -758,7 +758,7 @@ function StartRotateMode(netId)
             if IsControlJustPressed(0, Config.Controls.Confirm.key) then
                 editMode = false
                 MakeEntitySolid(ent)
-                TriggerServerEvent('cb-lighting:server:UpdateRotation', netId, rot)
+                TriggerServerEvent('blights:server:UpdateRotation', netId, rot)
             elseif IsControlJustPressed(0, Config.Controls.Cancel.key) then
                 editMode = false
                 SetEntityRotation(ent, initialRot.x, initialRot.y, initialRot.z, 2, true)
@@ -837,25 +837,7 @@ CreateThread(function()
     end
 end)
 
-local isStudioNight = false
-
-if Config.EnableNightTimeCommand then
-    RegisterCommand('cbnighttime', function()
-        isStudioNight = not isStudioNight
-
-        if isStudioNight then
-            NetworkOverrideClockTime(22, 0, 0)
-            SetWeatherTypeNowPersist("CLEAR")
-            QBCore.Functions.Notify('Studio Nighttime Enabled (22:00)', 'success')
-        else
-            NetworkClearClockTimeOverride()
-            ClearWeatherTypePersist()
-            QBCore.Functions.Notify('Studio Nighttime Disabled (Reverted to Server Time)', 'primary')
-        end
-    end, false)
-end
-
-RegisterNetEvent('cb-lighting:client:UseWorklight', function(itemName)
+RegisterNetEvent('blights:client:UseWorklight', function(itemName)
     StartPlacement(nil, itemName or 'worklight')
 end)
 
@@ -864,7 +846,7 @@ CreateThread(function()
     SetupTarget()
     
     if not LocalPlayer.state.isLoggedIn then
-        TriggerServerEvent('cb-lighting:server:RequestSync')
+        TriggerServerEvent('blights:server:RequestSync')
     end
 end)
 
@@ -1005,7 +987,7 @@ local function OpenControllerList()
     SendNUIMessage({ action = 'openController', lights = owned })
 end
 
-RegisterNetEvent('cb-lighting:client:UseController', function()
+RegisterNetEvent('blights:client:UseController', function()
     if controllerOpen then return end -- ignore rapid re-use while already open
     OpenControllerList()
 end)
@@ -1031,13 +1013,3 @@ RegisterNUICallback('closeController', function(data, cb)
     StopTablet()
     cb('ok')
 end)
-
-RegisterCommand(Config.Command, function()
-    StartPlacement()
-end, false)
-
-RegisterCommand('clearblur', function()
-    AnimpostfxStopAll()
-    TriggerScreenblurFadeOut(0)
-    QBCore.Functions.Notify('Cleared all screen effects.', 'success')
-end, false)
