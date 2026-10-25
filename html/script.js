@@ -61,8 +61,52 @@ let isDraggingWidth = false;
 let initialState = null;
 
 let shopItems = {};
+const IMG_BASE = 'https://r2.fivemanage.com/5eLeqJkw5V5OspLjh3SOX';
 const itemImages = { lightcontrol: 'light_tablet.png' };
 let cart = {};
+
+// =============================================
+// Image fallbacks (shown if a hosted image fails to load)
+// =============================================
+const FALLBACK_STROKE = '#d8d8d8';
+const FALLBACK_SVGS = {
+    // Studio light on a tripod
+    worklight: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none" stroke="%s" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><rect x="14" y="8" width="30" height="20" rx="3"/><path d="M44 14l8-4v16l-8-4"/><path d="M29 28v8M29 36L18 56M29 36l11 20M29 36v20"/></svg>',
+    // Omni tube light on a stand
+    tubeworklight: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none" stroke="%s" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><rect x="26" y="6" width="12" height="32" rx="6"/><path d="M18 14l-5-3M46 14l5-3M18 30l-5 3M46 30l5 3"/><path d="M32 38v10M32 48L20 58M32 48l12 10M32 48v10"/></svg>',
+    // Lighting controller tablet
+    lightcontrol: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none" stroke="%s" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><rect x="12" y="6" width="40" height="52" rx="5"/><circle cx="32" cy="26" r="8"/><path d="M32 12v2M32 38v2M18 26h2M44 26h2M22 16l1.5 1.5M40.5 34.5L42 36M42 16l-1.5 1.5M23.5 34.5L22 36"/><path d="M22 48h20"/></svg>',
+    // Generic light bulb
+    default: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none" stroke="%s" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M24 44c0-4-8-8-8-18a16 16 0 0 1 32 0c0 10-8 14-8 18z"/><path d="M25 52h14M28 58h8"/></svg>'
+};
+
+function fallbackKeyFor(src) {
+    const s = (src || '').toLowerCase();
+    if (s.includes('tubeworklight')) return 'tubeworklight';
+    if (s.includes('light_tablet') || s.includes('lightcontrol')) return 'lightcontrol';
+    if (s.includes('worklight')) return 'worklight';
+    return 'default';
+}
+
+function applyImageFallback(img) {
+    if (!img || img.dataset.fallbackApplied) return;
+    img.dataset.fallbackApplied = '1';
+    const svg = FALLBACK_SVGS[fallbackKeyFor(img.getAttribute('src'))].replace('%s', FALLBACK_STROKE);
+    img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+}
+
+// "error" doesn't bubble, so listen in the capture phase. This covers images
+// added later too (cart rows, controller list).
+document.addEventListener('error', function (e) {
+    if (e.target && e.target.tagName === 'IMG') applyImageFallback(e.target);
+}, true);
+
+// Catch images that already failed before this script ran
+window.addEventListener('load', function () {
+    document.querySelectorAll('img').forEach(function (img) {
+        if (img.complete && img.naturalWidth === 0) applyImageFallback(img);
+    });
+});
 
 // =============================================
 // UI Show/Hide Helpers
@@ -645,7 +689,7 @@ function renderCart() {
             div.className = 'cart-item';
             div.innerHTML = `
                 <div class="cart-item-icon">
-                    <img src="nui://qb-inventory/html/images/${itemImages[item] || item + '.png'}" alt="${item}">
+                    <img src="${IMG_BASE}/${itemImages[item] || item + '.png'}" alt="${item}">
                 </div>
                 <div class="cart-item-details">
                     <h4>${itemData.name}</h4>
@@ -757,7 +801,7 @@ window.addEventListener('message', function(event) {
             const row = document.createElement('div');
             row.className = 'controller-item';
             row.innerHTML = `
-                <div class="shop-item-icon"><img src="nui://qb-inventory/html/images/${img}" alt="${name}"></div>
+                <div class="shop-item-icon"><img src="${IMG_BASE}/${img}" alt="${name}"></div>
                 <div class="item-info">
                     <h3>${name} #${i + 1}</h3>
                     <p class="controller-dist">${Math.round(l.dist)}m away</p>

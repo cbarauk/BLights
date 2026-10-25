@@ -250,6 +250,15 @@ RegisterNetEvent('blights:client:SpawnLight', function(netId, color, enabled, br
     end)
 end)
 
+RegisterNetEvent('blights:client:UpdateLight', function(netId, color, brightness, distance, width)
+    local l = PlacedLights[netId]
+    if not l then return end
+    if color then l.color = color end
+    if brightness then l.brightness = brightness end
+    if distance then l.distance = distance end
+    if width then l.width = width end
+end)
+
 RegisterNetEvent('blights:client:RemoveLight', function(netId)
     PlacedLights[netId] = nil
 end)
@@ -291,6 +300,8 @@ RegisterNUICallback('playSound', function(data, cb)
     cb('ok')
 end)
 
+local pendingLive, liveSending = nil, false
+
 RegisterNUICallback('liveUpdate', function(data, cb)
     local netId = tonumber(data.netId)
     if netId and data.r then
@@ -315,12 +326,19 @@ RegisterNUICallback('liveUpdate', function(data, cb)
             }
         end
 
-        local ent = GetSafeEntityFromNetId(netId)
-        if ent ~= 0 then
-            Entity(ent).state:set('brightness', brightness, true)
-            Entity(ent).state:set('distance', distance, true)
-            Entity(ent).state:set('width', width, true)
-            Entity(ent).state:set('color', color, true)
+        -- send to the server (it validates and broadcasts to everyone, in range or not)
+        pendingLive = { netId = netId, color = color, brightness = brightness, distance = distance, width = width }
+        if not liveSending then
+            liveSending = true
+            CreateThread(function()
+                while pendingLive do
+                    local p = pendingLive
+                    pendingLive = nil
+                    TriggerServerEvent('blights:server:LiveUpdate', p.netId, p.color, p.brightness, p.distance, p.width)
+                    Wait(100)
+                end
+                liveSending = false
+            end)
         end
     end
     cb('ok')
@@ -1012,4 +1030,20 @@ RegisterNUICallback('closeController', function(data, cb)
     SetNuiFocus(false, false)
     StopTablet()
     cb('ok')
+end)
+
+
+-- Shop map blip
+CreateThread(function()
+    local b = Config.ShopBlip
+    if not b or not b.Enabled then return end
+    local c = Config.ShopNpc.coords
+    local blip = AddBlipForCoord(c.x, c.y, c.z)
+    SetBlipSprite(blip, b.sprite or 77)
+    SetBlipColour(blip, b.colour or 0)
+    SetBlipScale(blip, b.scale or 0.8)
+    SetBlipAsShortRange(blip, b.shortRange ~= false)
+    BeginTextCommandSetBlipName('STRING')
+    AddTextComponentSubstringPlayerName(b.label or 'Lighting Marketing')
+    EndTextCommandSetBlipName(blip)
 end)

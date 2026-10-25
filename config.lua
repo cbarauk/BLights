@@ -58,6 +58,17 @@ Config.ShopNpc = {
     spawnDistance = 60.0 -- NPC only exists on your client while you're this close
 }
 
+-- Map blip for the shop (set Enabled = false to hide it)
+-- Sprite 77 = radar_lester_family. Browse sprites at https://docs.fivem.net/docs/game-references/blips/
+Config.ShopBlip = {
+    Enabled = true,
+    sprite = 77,
+    colour = 0,
+    scale = 0.8,
+    shortRange = true,
+    label = 'Lighting Marketing'
+}
+
 Config.RenderDistance = 80.0
 
 Config.ShopItems = {
@@ -67,7 +78,7 @@ Config.ShopItems = {
 }
 
 Config.ItemModels = {
-    ['worklight'] = `prop_kino_light_02`,
+    ['worklight'] = `blight_kino_light_01`,
     ['tubeworklight'] = `xm_prop_base_tripod_lampa`
 }
 

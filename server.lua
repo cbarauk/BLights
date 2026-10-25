@@ -38,9 +38,47 @@ RegisterNetEvent('blights:server:SyncAllColors', function(color, brightness)
                     Entity(ent).state:set('color', color, true)
                     Entity(ent).state:set('brightness', brightness, true)
                 end
+                BroadcastLightUpdate(netId)
             end
         end
     end
+end)
+
+local function BroadcastLightUpdate(netId, exceptSrc)
+    local l = PlacedLights[netId]
+    if not l then return end
+    for _, playerId in ipairs(GetPlayers()) do
+        local id = tonumber(playerId)
+        if id ~= exceptSrc then
+            TriggerClientEvent('blights:client:UpdateLight', id, netId, l.color, l.brightness, l.distance, l.width)
+        end
+    end
+end
+
+-- Live edits from the control panel: validated, stored and sent to every player
+-- (including ones whose client has not streamed the light in yet)
+RegisterNetEvent('blights:server:LiveUpdate', function(netId, color, brightness, distance, width)
+    local src = source
+    local Player = QBCore.Functions.GetPlayer(src)
+    if not Player then return end
+    local l = PlacedLights[netId]
+    if not l or l.owner ~= Player.PlayerData.citizenid then return end
+
+    if type(color) == 'table' and color.r and color.g and color.b then
+        l.color = {
+            r = math.max(0, math.min(255, math.floor(color.r))),
+            g = math.max(0, math.min(255, math.floor(color.g))),
+            b = math.max(0, math.min(255, math.floor(color.b)))
+        }
+    end
+    if tonumber(brightness) then
+        l.brightness = math.max(Config.MinBrightness, math.min(Config.MaxBrightness, tonumber(brightness)))
+    end
+    if tonumber(distance) then l.distance = math.max(1.0, math.min(50.0, tonumber(distance))) end
+    if tonumber(width) then l.width = math.max(1.0, math.min(50.0, tonumber(width))) end
+    l.lastInteract = os.time()
+
+    BroadcastLightUpdate(netId, src)
 end)
 
 RegisterNetEvent('blights:server:PlaceLight', function(coords, rot, color, enabled, oldNetId, brightness, distance, width, itemName)
@@ -167,6 +205,7 @@ RegisterNetEvent('blights:server:SaveLightSettings', function(netId, color, brig
         state:set('distance', PlacedLights[netId].distance, true)
         state:set('width', PlacedLights[netId].width, true)
     end
+    BroadcastLightUpdate(netId)
 end)
 
 RegisterNetEvent('blights:server:PickUp', function(netId)

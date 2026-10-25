@@ -74,6 +74,7 @@ All settings are in `config.lua`, including:
 - `Config.ShopNpc` - shop NPC model and location
 - `Config.ShopItems` - items and prices sold in the shop
 - `Config.ItemModels` - prop model used for each light item
+- `Config.ShopBlip` - map blip for the shop (`Enabled` toggles it, plus sprite, colour, scale, label)
 - `Config.Target` and `Config.Menu` - target and menu resources
 
 ## Notes
