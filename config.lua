@@ -1,6 +1,6 @@
 Config = {}
 
-Config.ItemName = 'worklight'
+Config.ItemName = 'bworklight'
 Config.ControllerItem = 'lightcontrol' -- Item that lets you control your placed lights remotely
 Config.ControllerRange = 150.0 -- Max distance (metres) from you to a light for the controller to reach it
 
@@ -71,14 +71,21 @@ Config.ShopBlip = {
 
 Config.RenderDistance = 80.0
 
+-- Items sold in the shop.
+--   price     : cost per item
+--   available : true  = can be bought
+--               false = shown in the shop but greyed out with the label below, and the server refuses to sell it
 Config.ShopItems = {
-    ['worklight'] = { price = 500 },
-    ['tubeworklight'] = { price = 750 },
-    ['lightcontrol'] = { price = 1000 }
+    ['bworklight']     = { price = 500,  available = true },
+    ['tubeworklight'] = { price = 750,  available = true },
+    ['lightcontrol']  = { price = 1000, available = true }
 }
 
+-- Text shown on the shop for items where available = false
+Config.ShopUnavailableLabel = 'Coming Soon'
+
 Config.ItemModels = {
-    ['worklight'] = `blight_kino_light_01`,
+    ['bworklight'] = `blight_kino_light_01`,
     ['tubeworklight'] = `xm_prop_base_tripod_lampa`
 }
 

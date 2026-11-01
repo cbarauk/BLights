@@ -17,6 +17,7 @@ files {
     'html/index.html',
     'html/style.css',
     'html/script.js',
+    'images/*.webp',
     'stream/blight_kino_light_01.ytyp'
 }
 

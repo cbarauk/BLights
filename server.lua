@@ -86,8 +86,16 @@ RegisterNetEvent('blights:server:PlaceLight', function(coords, rot, color, enabl
     local Player = QBCore.Functions.GetPlayer(src)
     if not Player then return end
     local ownerCitizenId = Player.PlayerData.citizenid
-    itemName = itemName or 'worklight'
-    
+    itemName = itemName or Config.ItemName or 'bworklight'
+
+    -- Only accept item types explicitly configured by BLights. Never fall back
+    -- to a vanilla GTA prop or another light's model.
+    local model = Config.ItemModels[itemName]
+    if not model then
+        TriggerClientEvent('QBCore:Notify', src, 'Invalid BLights item type: '..tostring(itemName), 'error')
+        return
+    end
+
     if oldNetId and PlacedLights[oldNetId] then
         if PlacedLights[oldNetId].owner ~= ownerCitizenId then return end
         
@@ -116,14 +124,21 @@ RegisterNetEvent('blights:server:PlaceLight', function(coords, rot, color, enabl
         TriggerClientEvent('inventory:client:ItemBox', src, QBCore.Shared.Items[itemName], "remove")
     end
 
-    local model = Config.ItemModels[itemName] or Config.ItemModels['worklight']
     local obj = CreateObjectNoOffset(model, coords.x, coords.y, coords.z, true, true, false)
     
     local timeout = 0
-    while not DoesEntityExist(obj) do 
-        Wait(10) 
+    while not DoesEntityExist(obj) do
+        Wait(10)
         timeout = timeout + 1
-        if timeout > 50 then return end
+        if timeout > 100 then
+            -- If a new placement failed, return the consumed item.
+            if not oldNetId then
+                Player.Functions.AddItem(itemName, 1)
+                TriggerClientEvent('inventory:client:ItemBox', src, QBCore.Shared.Items[itemName], 'add')
+            end
+            TriggerClientEvent('QBCore:Notify', src, 'BLights could not spawn its configured model. Check that the custom model is streamed correctly.', 'error')
+            return
+        end
     end
     
     SetEntityRotation(obj, rot.x, rot.y, rot.z, 2, true)
@@ -221,7 +236,7 @@ RegisterNetEvent('blights:server:PickUp', function(netId)
             DeleteEntity(entity)
         end
         
-        local itemType = PlacedLights[netId].itemType or 'worklight'
+        local itemType = PlacedLights[netId].itemType or 'bworklight'
         PlacedLights[netId] = nil
         
         if OwnersLights[ownerCitizenId] then
@@ -263,6 +278,10 @@ RegisterNetEvent('blights:server:ProcessPurchase', function(data)
 
         local itemData = Config.ShopItems[item]
         if itemData then
+            if itemData.available == false then
+                TriggerClientEvent('QBCore:Notify', src, (QBCore.Shared.Items[item] and QBCore.Shared.Items[item].label or item) .. ' is currently unavailable!', 'error')
+                return
+            end
             totalPrice = totalPrice + (itemData.price * qty)
             validCart[item] = qty
         end

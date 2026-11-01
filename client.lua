@@ -214,7 +214,7 @@ RegisterNetEvent('blights:client:SpawnLight', function(netId, color, enabled, br
         isOwner = (owner == myCid),
         ent = nil,
         rot = rot,
-        itemType = itemType or 'worklight'
+        itemType = itemType or 'bworklight'
     }
     
     CreateThread(function()
@@ -386,7 +386,8 @@ function OpenShopUI()
     
     SendNUIMessage({
         action = 'openShop',
-        items = Config.ShopItems
+        items = Config.ShopItems,
+        unavailableLabel = Config.ShopUnavailableLabel or 'Coming Soon'
     })
 end
 
@@ -547,7 +548,7 @@ function StartPlacement(existingNetId, itemName)
     local ped = PlayerPedId()
     PlacementMode = true
     currentPlacementDist = Config.PlacementDistance or 3.0
-    currentItemName = itemName or 'worklight'
+    currentItemName = itemName or 'bworklight'
     
     local color = Config.DefaultColor
     local enabled = Config.DefaultEnabled
@@ -571,25 +572,43 @@ function StartPlacement(existingNetId, itemName)
         brightness = data.brightness or Config.LightDefaults.brightness
         distance = data.distance or Config.LightDefaults.distance
         width = data.width or Config.LightDefaults.width
-        currentItemName = data.itemType or 'worklight'
+        currentItemName = data.itemType or 'bworklight'
         
         local ent = GetSafeEntityFromNetId(existingNetId)
-        if ent ~= 0 then 
+        if ent ~= 0 then
             startRot = GetEntityRotation(ent, 2)
-            DeleteEntity(ent) 
         end
         targetNetId = existingNetId
     else
         targetNetId = nil
     end
 
-    local model = Config.ItemModels[currentItemName] or Config.ItemModels['worklight']
+    local model = Config.ItemModels[currentItemName]
+    if not model or model == 0 then
+        QBCore.Functions.Notify(('No model is configured for BLights item: %s'):format(tostring(currentItemName)), 'error')
+        PlacementMode = false
+        targetNetId = nil
+        return
+    end
+
     RequestModel(model)
     local timeout = 0
-    while not HasModelLoaded(model) do 
-        Wait(10) 
+    while not HasModelLoaded(model) do
+        Wait(10)
         timeout = timeout + 1
-        if timeout > 50 then return end
+        if timeout > 500 then
+            SetModelAsNoLongerNeeded(model)
+            QBCore.Functions.Notify('BLights custom model failed to load. Check the resource stream files and ytyp registration.', 'error')
+            PlacementMode = false
+            targetNetId = nil
+            return
+        end
+    end
+
+    -- Only remove the old local entity after the replacement model has loaded.
+    if existingNetId then
+        local ent = GetSafeEntityFromNetId(existingNetId)
+        if ent ~= 0 then DeleteEntity(ent) end
     end
 
     local min, max = GetModelDimensions(model)
@@ -822,7 +841,7 @@ CreateThread(function()
                     local brightness = ((data.brightness or Config.LightDefaults.brightness) + 0.0) * DaylightMult
                     local distance = (data.distance or Config.LightDefaults.distance or 25.0) + 0.0
                     local width = (data.width or Config.LightDefaults.width or 25.0) + 0.0
-                    local itemType = data.itemType or 'worklight'
+                    local itemType = data.itemType or 'bworklight'
 
                     if itemType == 'tubeworklight' then
                         DrawSpotLight(
@@ -856,7 +875,7 @@ CreateThread(function()
 end)
 
 RegisterNetEvent('blights:client:UseWorklight', function(itemName)
-    StartPlacement(nil, itemName or 'worklight')
+    StartPlacement(nil, itemName or 'bworklight')
 end)
 
 CreateThread(function()
@@ -983,7 +1002,7 @@ local function OpenControllerList()
                     owned[#owned + 1] = {
                         netId = netId,
                         dist = dist,
-                        itemType = data.itemType or 'worklight',
+                        itemType = data.itemType or 'bworklight',
                         color = { r = math.floor(c.r or 255), g = math.floor(c.g or 255), b = math.floor(c.b or 255) }
                     }
                 end

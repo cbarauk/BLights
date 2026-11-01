@@ -61,8 +61,12 @@ let isDraggingWidth = false;
 let initialState = null;
 
 let shopItems = {};
-const IMG_BASE = 'https://r2.fivemanage.com/5eLeqJkw5V5OspLjh3SOX';
-const itemImages = { lightcontrol: 'light_tablet.png' };
+const IMG_BASE = '../images';
+const itemImages = {
+    bworklight: 'worklight.webp',
+    tubeworklight: 'tubeworklight.webp',
+    lightcontrol: 'light_tablet.webp'
+};
 let cart = {};
 
 // =============================================
@@ -71,7 +75,7 @@ let cart = {};
 const FALLBACK_STROKE = '#d8d8d8';
 const FALLBACK_SVGS = {
     // Studio light on a tripod
-    worklight: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none" stroke="%s" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><rect x="14" y="8" width="30" height="20" rx="3"/><path d="M44 14l8-4v16l-8-4"/><path d="M29 28v8M29 36L18 56M29 36l11 20M29 36v20"/></svg>',
+    bworklight: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none" stroke="%s" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><rect x="14" y="8" width="30" height="20" rx="3"/><path d="M44 14l8-4v16l-8-4"/><path d="M29 28v8M29 36L18 56M29 36l11 20M29 36v20"/></svg>',
     // Omni tube light on a stand
     tubeworklight: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none" stroke="%s" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><rect x="26" y="6" width="12" height="32" rx="6"/><path d="M18 14l-5-3M46 14l5-3M18 30l-5 3M46 30l5 3"/><path d="M32 38v10M32 48L20 58M32 48l12 10M32 48v10"/></svg>',
     // Lighting controller tablet
@@ -84,7 +88,7 @@ function fallbackKeyFor(src) {
     const s = (src || '').toLowerCase();
     if (s.includes('tubeworklight')) return 'tubeworklight';
     if (s.includes('light_tablet') || s.includes('lightcontrol')) return 'lightcontrol';
-    if (s.includes('worklight')) return 'worklight';
+    if (s.includes('worklight')) return 'bworklight';
     return 'default';
 }
 
@@ -689,7 +693,7 @@ function renderCart() {
             div.className = 'cart-item';
             div.innerHTML = `
                 <div class="cart-item-icon">
-                    <img src="${IMG_BASE}/${itemImages[item] || item + '.png'}" alt="${item}">
+                    <img src="${IMG_BASE}/${itemImages[item] || item + '.webp'}" alt="${item}">
                 </div>
                 <div class="cart-item-details">
                     <h4>${itemData.name}</h4>
@@ -797,7 +801,7 @@ window.addEventListener('message', function(event) {
         (data.lights || []).forEach((l, i) => {
             const isTube = l.itemType === 'tubeworklight';
             const name = isTube ? 'Omni Tube Light' : 'Studio Light';
-            const img = isTube ? 'tubeworklight.png' : 'worklight.png';
+            const img = isTube ? 'tubeworklight.webp' : 'worklight.webp';
             const row = document.createElement('div');
             row.className = 'controller-item';
             row.innerHTML = `
@@ -836,6 +840,19 @@ window.addEventListener('message', function(event) {
             if (priceEl) priceEl.innerText = shopItems[item].price;
             let btn = document.querySelector(`.add-cart-btn[data-item="${item}"]`);
             if (btn) btn.setAttribute('data-price', shopItems[item].price);
+
+            // Availability is controlled by Config.ShopItems[item].available
+            const row = document.querySelector(`.shop-item[data-item="${item}"]`);
+            if (row) {
+                const available = shopItems[item].available !== false;
+                const tag = row.querySelector('.coming-soon-tag');
+                row.classList.toggle('coming-soon', !available);
+                if (btn) btn.style.display = available ? '' : 'none';
+                if (tag) {
+                    tag.style.display = available ? 'none' : '';
+                    tag.innerText = data.unavailableLabel || 'Coming Soon';
+                }
+            }
         }
 
         updateCartTotals();
@@ -971,6 +988,7 @@ document.querySelectorAll('.add-cart-btn').forEach(btn => {
     btn.addEventListener('click', function() {
         playSound("SELECT", "HUD_FRONTEND_DEFAULT_SOUNDSET");
         let item = this.getAttribute('data-item');
+        if (shopItems[item] && shopItems[item].available === false) return;
         let name = this.getAttribute('data-name');
         let price = parseInt(this.getAttribute('data-price'));
         
@@ -1027,5 +1045,6 @@ document.getElementById('shop-card-btn').addEventListener('click', function() {
 });
 
 // Initialize Canvas
-drawColorWheel();
+drawSVSquare();
+drawHueStrip();
 updateUI();
