@@ -1,3 +1,5 @@
+<img width="451" height="256" alt="blights" src="https://github.com/user-attachments/assets/9c5e374e-1175-4f48-a0f0-58b139324262" />
+
 # BLights
 
 A studio lighting script for FiveM (QBCore). Players can buy portable photography lights, place them in the world, and control colour, brightness and range through a custom UI.
