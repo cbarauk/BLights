@@ -85,7 +85,7 @@ Config.ShopItems = {
 Config.ShopUnavailableLabel = 'Coming Soon'
 
 Config.ItemModels = {
-    ['bworklight'] = `blight_kino_light_01`,
+    ['bworklight'] = `prop_kino_light_02`,
     ['tubeworklight'] = `xm_prop_base_tripod_lampa`
 }
 
